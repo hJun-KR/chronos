@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Chronos API Quick Test</title>
+    <style>
+        body { font-family: sans-serif; margin: 2rem; background: #fafafa; }
+        button { padding: .6rem 1rem; margin-right: .5rem; cursor: pointer; }
+        textarea { width: 100%; height: 120px; margin-top: 1rem; }
+        pre { background: #111; color: #eee; padding: 1rem; border-radius: 6px; max-height: 360px; overflow: auto; }
+    </style>
+</head>
+<body>
+<h1>Chronos Frontend Test Suite</h1>
+<p>이 페이지는 회원가입 → 이메일 인증 → 로그인 → 알람 생성까지 시나리오를 순차적으로 호출해 줍니다.</p>
+
+<section>
+    <label>테스트 이메일</label>
+    <input type="email" id="test-email" value="test+1@example.com" />
+    <label>비밀번호</label>
+    <input type="password" id="test-password" value="Test12345!" />
+    <label>이름</label>
+    <input type="text" id="test-name" value="테스터" />
+    <div style="margin-top: 1rem;">
+        <button id="run-flow">시나리오 실행</button>
+        <button id="clear-log">로그 초기화</button>
+    </div>
+</section>
+
+<section>
+    <h3>로그</h3>
+    <pre id="log"></pre>
+</section>
+
+<script>
+    const logEl = document.getElementById("log");
+    const appendLog = (msg, data) => {
+        const time = new Date().toISOString();
+        logEl.textContent += `[#${time}] ${msg}\n${data ? JSON.stringify(data, null, 2) : ""}\n\n`;
+        logEl.scrollTop = logEl.scrollHeight;
+    };
+
+    const postJson = async (url, payload) => {
+        const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const text = await res.text();
+        let body;
+        try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+        if (!res.ok) {
+            throw { status: res.status, body };
+        }
+        return body;
+    };
+
+    const runFlowButton = document.getElementById("run-flow");
+    const clearLogButton = document.getElementById("clear-log");
+
+    clearLogButton.addEventListener("click", () => {
+        logEl.textContent = "";
+    });
+
+    runFlowButton.addEventListener("click", async () => {
+        const email = document.getElementById("test-email").value;
+        const password = document.getElementById("test-password").value;
+        const name = document.getElementById("test-name").value;
+
+        let refreshToken = "";
+        try {
+            appendLog("회원 가입 요청", { email, name });
+            await postJson("/api/v1/auth/register", { email, password, name });
+            appendLog("회원 가입 완료", null);
+
+            appendLog("이메일 인증 코드 발송", { email });
+            await postJson("/api/v1/email-verifications/send", { email });
+            appendLog("이메일 인증 코드 발송 완료 (메일 확인 필요)", null);
+
+            appendLog("로그인 요청", { email });
+            const login = await postJson("/api/v1/auth/login", { email, password });
+            appendLog("로그인 성공", login);
+            refreshToken = login.token.refreshToken;
+
+            appendLog("리프레시 토큰으로 재발급", { refreshToken });
+            const refreshed = await postJson("/api/v1/auth/refresh", { refreshToken });
+            appendLog("액세스 토큰 재발급 성공", refreshed);
+        } catch (err) {
+            appendLog("오류 발생", err);
+        }
+    });
+</script>
+</body>
+</html>
