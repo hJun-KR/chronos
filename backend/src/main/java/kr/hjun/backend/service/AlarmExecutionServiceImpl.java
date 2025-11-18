@@ -1,5 +1,6 @@
 package kr.hjun.backend.service;
 
+import kr.hjun.backend.dto.AlarmSimulationResponse;
 import kr.hjun.backend.entity.Alarm;
 import kr.hjun.backend.entity.AlarmExecutionLog;
 import kr.hjun.backend.repository.AlarmRepository;
@@ -41,6 +42,23 @@ public class AlarmExecutionServiceImpl implements AlarmExecutionService {
         } finally {
             updateScheduling(alarm, alarm.getLastResult());
         }
+    }
+
+    // 사용자 입력 컨텍스트로 시뮬레이션한다.
+    @Override
+    public AlarmSimulationResponse simulate(Alarm alarm, ConditionContext context, boolean sendNotification) {
+        boolean shouldRun = conditionEvaluationService.evaluate(alarm.getConditions(),
+                context != null ? context : ConditionContext.empty());
+        if (!shouldRun) {
+            return new AlarmSimulationResponse(false, false, "조건이 충족되지 않았습니다.");
+        }
+
+        boolean sent = false;
+        if (sendNotification) {
+            notificationService.send(alarm, buildPayload(alarm));
+            sent = true;
+        }
+        return new AlarmSimulationResponse(true, sent, sent ? "알림 전송 완료" : "조건 충족 - 전송 안 함");
     }
 
     private void recordLog(Alarm alarm, boolean success, String message, String payload) {

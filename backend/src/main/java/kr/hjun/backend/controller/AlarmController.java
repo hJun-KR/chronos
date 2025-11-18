@@ -1,10 +1,11 @@
 package kr.hjun.backend.controller;
 
 import jakarta.validation.Valid;
-import kr.hjun.backend.dto.AlarmCreateRequest;
-import kr.hjun.backend.dto.AlarmResponse;
-import kr.hjun.backend.dto.AlarmUpdateRequest;
+import kr.hjun.backend.dto.*;
+import kr.hjun.backend.entity.Alarm;
+import kr.hjun.backend.repository.AlarmRepository;
 import kr.hjun.backend.security.CustomUserDetails;
+import kr.hjun.backend.service.AlarmExecutionService;
 import kr.hjun.backend.service.AlarmService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,8 @@ import java.util.List;
 public class AlarmController {
 
     private final AlarmService alarmService;
+    private final AlarmExecutionService alarmExecutionService;
+    private final AlarmRepository alarmRepository;
 
     // 알람을 생성한다.
     @PostMapping
@@ -58,5 +61,16 @@ public class AlarmController {
                                             @PathVariable Long alarmId) {
         alarmService.deleteAlarm(userDetails.getId(), alarmId);
         return ResponseEntity.noContent().build();
+    }
+
+    // 알람을 시뮬레이션한다.
+    @PostMapping("/{alarmId}/simulate")
+    public ResponseEntity<AlarmSimulationResponse> simulate(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                                            @PathVariable Long alarmId,
+                                                            @RequestBody AlarmSimulationRequest request) {
+        Alarm alarm = alarmRepository.findByIdAndUserId(alarmId, userDetails.getId())
+                .orElseThrow(() -> new kr.hjun.backend.exception.ChronosException(org.springframework.http.HttpStatus.NOT_FOUND, "알람을 찾을 수 없습니다."));
+        AlarmSimulationResponse response = alarmExecutionService.simulate(alarm, request.toContext(), request.sendNotification());
+        return ResponseEntity.ok(response);
     }
 }
