@@ -45,6 +45,11 @@ class AlarmServiceImplTest {
         public PasswordEncoder passwordEncoder() {
             return new BCryptPasswordEncoder();
         }
+
+        @Bean
+        public AlarmSchedulingService alarmSchedulingService() {
+            return new AlarmSchedulingServiceImpl();
+        }
     }
 
     // 알람을 성공적으로 생성한다.
@@ -86,7 +91,7 @@ class AlarmServiceImplTest {
         updateRequest.setDescription("설명");
         updateRequest.setAlarmType(Alarm.AlarmType.CUSTOM);
         updateRequest.setScheduleType(Alarm.ScheduleType.RECURRING);
-        updateRequest.setCronExpression("0 0 * * *");
+        updateRequest.setCronExpression("0 0 * * * *");
         updateRequest.setRunAt(null);
         updateRequest.setTimezone("UTC");
         updateRequest.setChannel(Alarm.AlarmChannel.EMAIL);

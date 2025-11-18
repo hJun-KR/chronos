@@ -25,6 +25,7 @@ public class AlarmServiceImpl implements AlarmService {
 
     private final AlarmRepository alarmRepository;
     private final UserRepository userRepository;
+    private final AlarmSchedulingService alarmSchedulingService;
 
     // 알람을 생성한다.
     @Override
@@ -46,6 +47,7 @@ public class AlarmServiceImpl implements AlarmService {
                 .build();
 
         setConditions(alarm, request.getConditions());
+        alarmSchedulingService.updateNextRun(alarm);
         Alarm saved = alarmRepository.save(alarm);
         return AlarmResponse.from(saved);
     }
@@ -67,6 +69,7 @@ public class AlarmServiceImpl implements AlarmService {
         alarm.setStatus(request.getStatus());
         alarm.clearConditions();
         setConditions(alarm, request.getConditions());
+        alarmSchedulingService.updateNextRun(alarm);
 
         return AlarmResponse.from(alarm);
     }
