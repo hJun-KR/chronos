@@ -59,7 +59,11 @@ public class EmailSenderImpl implements EmailSender {
         }
         InternetAddress internetAddress = new InternetAddress(address);
         if (personal != null && !personal.isEmpty()) {
-            internetAddress.setPersonal(personal, "UTF-8");
+            try {
+                internetAddress.setPersonal(personal, "UTF-8");
+            } catch (java.io.UnsupportedEncodingException e) {
+                throw new MessagingException("발신자명을 인코딩할 수 없습니다.", e);
+            }
         }
         return internetAddress;
     }
