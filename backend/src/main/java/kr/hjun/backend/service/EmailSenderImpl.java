@@ -47,16 +47,21 @@ public class EmailSenderImpl implements EmailSender {
     private InternetAddress parseFromAddress(String raw) throws MessagingException {
         String address = raw;
         String personal = null;
-        if (raw.contains("<") && raw.contains(">")) {
+        if (raw.contains("<")) {
             int start = raw.indexOf('<');
             int end = raw.indexOf('>', start);
             if (end == -1) {
-                address = raw.substring(start + 1).trim();
-            } else {
-                address = raw.substring(start + 1, end).trim();
+                end = raw.length();
+            }
+            String maybeAddress = raw.substring(start + 1, end).trim();
+            if (!maybeAddress.isEmpty()) {
+                address = maybeAddress;
             }
             personal = raw.substring(0, start).replace("\"", "").trim();
+        } else {
+            address = address.replace("\"", "").trim();
         }
+        address = address.replace("<", "").replace(">", "").trim();
         InternetAddress internetAddress = new InternetAddress(address);
         if (personal != null && !personal.isEmpty()) {
             try {
