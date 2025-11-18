@@ -3,6 +3,7 @@ package kr.hjun.backend.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
@@ -13,6 +14,8 @@ import org.springframework.stereotype.Component;
 public class EmailSenderImpl implements EmailSender {
 
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
+    @Value("${MAILER_FROM:no-reply@chronos.local}")
+    private String fromAddress;
 
     // 이메일을 발송한다.
     @Override
@@ -23,6 +26,7 @@ public class EmailSenderImpl implements EmailSender {
             return;
         }
         SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromAddress.replace("\"", ""));
         message.setTo(to);
         message.setSubject(subject);
         message.setText(body);

@@ -14,8 +14,16 @@ spring:
     show-sql: false
 
   mail:
-    host: localhost
-    port: 1025
+    host: ${MAILER_HOST:localhost}
+    port: ${MAILER_PORT:1025}
+    username: ${MAILER_USER:test}
+    password: ${MAILER_PASS:test}
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
 
 jwt:
   secret: test-secret-key-test-secret-key-test
