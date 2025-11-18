@@ -2,13 +2,13 @@ package kr.hjun.backend.service;
 
 import kr.hjun.backend.dto.LoginRequest;
 import kr.hjun.backend.dto.UserCreateRequest;
-import kr.hjun.backend.dto.UserResponse;
+import kr.hjun.backend.entity.User;
 
 public interface UserService {
 
     // 새 사용자를 등록한다.
-    UserResponse register(UserCreateRequest request);
+    User register(UserCreateRequest request);
 
     // 기존 사용자를 로그인시킨다.
-    UserResponse login(LoginRequest request);
+    User login(LoginRequest request);
 }

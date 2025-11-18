@@ -2,7 +2,6 @@ package kr.hjun.backend.service;
 
 import kr.hjun.backend.dto.LoginRequest;
 import kr.hjun.backend.dto.UserCreateRequest;
-import kr.hjun.backend.dto.UserResponse;
 import kr.hjun.backend.entity.User;
 import kr.hjun.backend.exception.ChronosException;
 import kr.hjun.backend.repository.UserRepository;
@@ -23,7 +22,7 @@ public class UserServiceImpl implements UserService {
     // 새 사용자를 등록한다.
     @Override
     @Transactional
-    public UserResponse register(UserCreateRequest request) {
+    public User register(UserCreateRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new ChronosException(HttpStatus.CONFLICT, "이미 가입된 이메일입니다.");
         }
@@ -34,15 +33,12 @@ public class UserServiceImpl implements UserService {
 
         String encodedPassword = passwordEncoder.encode(request.getPassword());
         User newUser = request.toEntity(encodedPassword);
-        User savedUser = userRepository.save(newUser);
-
-        return new UserResponse(savedUser);
+        return userRepository.save(newUser);
     }
 
     // 기존 사용자를 로그인시킨다.
-    @Transactional(readOnly = true)
     @Override
-    public UserResponse login(LoginRequest request) {
+    public User login(LoginRequest request) {
         User user = userRepository.findByEmailAndIsActiveTrue(request.getEmail())
                 .orElseThrow(() -> new ChronosException(HttpStatus.NOT_FOUND, "가입되지 않은 이메일이거나 비활성 계정입니다."));
 
@@ -50,6 +46,6 @@ public class UserServiceImpl implements UserService {
             throw new ChronosException(HttpStatus.UNAUTHORIZED, "비밀번호가 일치하지 않습니다.");
         }
 
-        return new UserResponse(user);
+        return user;
     }
 }

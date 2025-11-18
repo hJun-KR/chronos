@@ -12,3 +12,13 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
     show-sql: false
+
+  mail:
+    host: localhost
+    port: 1025
+
+jwt:
+  secret: test-secret-key-test-secret-key-test
+  issuer: test
+  access-token-validity: 60000
+  refresh-token-validity: 120000

@@ -29,7 +29,7 @@ public class UserCreateRequest {
                 .password(encodedPassword)
                 .name(this.name)
                 .role(User.Role.USER)
-                .isActive(true)
+                .isActive(false)
                 .build();
     }
 }

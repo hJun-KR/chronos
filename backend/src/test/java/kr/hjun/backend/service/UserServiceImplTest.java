@@ -2,7 +2,6 @@ package kr.hjun.backend.service;
 
 import kr.hjun.backend.dto.LoginRequest;
 import kr.hjun.backend.dto.UserCreateRequest;
-import kr.hjun.backend.dto.UserResponse;
 import kr.hjun.backend.entity.User;
 import kr.hjun.backend.exception.ChronosException;
 import kr.hjun.backend.repository.UserRepository;
@@ -48,12 +47,13 @@ class UserServiceImplTest {
         request.setPassword("password123");
         request.setName("테스터");
 
-        UserResponse response = userService.register(request);
+        User response = userService.register(request);
 
         assertThat(response.getId()).isNotNull();
 
         User savedUser = userRepository.findByEmail("test@example.com").orElseThrow();
         assertThat(savedUser.getPassword()).isNotEqualTo("password123");
+        assertThat(savedUser.isActive()).isFalse();
     }
 
     // 중복 이메일 등록 시 예외가 발생한다.
@@ -65,7 +65,9 @@ class UserServiceImplTest {
         request.setPassword("password123");
         request.setName("사용자1");
 
-        userService.register(request);
+        User registered = userService.register(request);
+        registered.setActive(true);
+        userRepository.save(registered);
 
         assertThatThrownBy(() -> userService.register(request))
                 .isInstanceOf(ChronosException.class);
@@ -79,13 +81,15 @@ class UserServiceImplTest {
         request.setEmail("login@example.com");
         request.setPassword("password123");
         request.setName("사용자");
-        userService.register(request);
+        User registered = userService.register(request);
+        registered.setActive(true);
+        userRepository.save(registered);
 
         LoginRequest loginRequest = new LoginRequest();
         loginRequest.setEmail("login@example.com");
         loginRequest.setPassword("password123");
 
-        UserResponse response = userService.login(loginRequest);
+        User response = userService.login(loginRequest);
 
         assertThat(response.getEmail()).isEqualTo("login@example.com");
     }
