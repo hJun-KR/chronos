@@ -4,8 +4,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -25,11 +28,17 @@ public class EmailSenderImpl implements EmailSender {
             log.info("메일 전송 미구현 - 수신자: {}, 제목: {}, 본문: {}", to, subject, body);
             return;
         }
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromAddress.replace("\"", ""));
-        message.setTo(to);
-        message.setSubject(subject);
-        message.setText(body);
-        javaMailSender.send(message);
+        try {
+            MimeMessage message = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+            helper.setTo(to);
+            helper.setFrom(new InternetAddress(fromAddress, true));
+            helper.setSubject(subject);
+            helper.setText(body, false);
+            javaMailSender.send(message);
+        } catch (MessagingException e) {
+            log.error("메일 전송 실패 - 수신자: {}", to, e);
+            throw new org.springframework.mail.MailParseException("메일 전송 실패", e);
+        }
     }
 }
