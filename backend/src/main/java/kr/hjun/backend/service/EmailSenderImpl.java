@@ -32,7 +32,8 @@ public class EmailSenderImpl implements EmailSender {
             MimeMessage message = javaMailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
             helper.setTo(to);
-            helper.setFrom(new InternetAddress(fromAddress, true));
+            InternetAddress parsedFrom = parseFromAddress(fromAddress);
+            helper.setFrom(parsedFrom);
             helper.setSubject(subject);
             helper.setText(body, false);
             javaMailSender.send(message);
@@ -40,5 +41,26 @@ public class EmailSenderImpl implements EmailSender {
             log.error("메일 전송 실패 - 수신자: {}", to, e);
             throw new org.springframework.mail.MailParseException("메일 전송 실패", e);
         }
+    }
+
+    // 환경 변수에서 전달된 발신 주소를 파싱한다.
+    private InternetAddress parseFromAddress(String raw) throws MessagingException {
+        String address = raw;
+        String personal = null;
+        if (raw.contains("<") && raw.contains(">")) {
+            int start = raw.indexOf('<');
+            int end = raw.indexOf('>', start);
+            if (end == -1) {
+                address = raw.substring(start + 1).trim();
+            } else {
+                address = raw.substring(start + 1, end).trim();
+            }
+            personal = raw.substring(0, start).replace("\"", "").trim();
+        }
+        InternetAddress internetAddress = new InternetAddress(address);
+        if (personal != null && !personal.isEmpty()) {
+            internetAddress.setPersonal(personal, "UTF-8");
+        }
+        return internetAddress;
     }
 }
