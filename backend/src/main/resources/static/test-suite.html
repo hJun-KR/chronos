@@ -47,6 +47,19 @@
 </section>
 
 <section>
+    <h3>4. 알람 테스트</h3>
+    <p>로그인 결과에서 받은 토큰을 사용해 알람 CRUD를 빠르게 테스트합니다.</p>
+    <div>
+        <label>알람 이름</label>
+        <input type="text" id="alarm-name" value="테스트 알람"/>
+        <label>타겟</label>
+        <input type="text" id="alarm-target" value="alarm@example.com"/>
+        <button id="create-alarm" disabled>알람 생성</button>
+        <button id="update-alarm" disabled>알람 수정</button>
+        <button id="delete-alarm" disabled>알람 삭제</button>
+    </div>
+</section>
+<section>
     <h3>로그</h3>
     <pre id="log"></pre>
 </section>
@@ -83,6 +96,8 @@
     });
 
     let currentEmail = "";
+    let accessToken = "";
+    let alarmId = null;
 
     registerButton.addEventListener("click", async () => {
         const email = document.getElementById("test-email").value;
@@ -149,12 +164,120 @@
             appendLog("로그인 요청", { email: currentEmail });
             const login = await postJson("/api/v1/auth/login", { email: currentEmail, password: document.getElementById("test-password").value });
             appendLog("로그인 성공", login);
+            accessToken = login.token.accessToken;
+            alarmId = null;
 
             appendLog("리프레시 토큰으로 재발급", { refreshToken: login.token.refreshToken });
             const refreshed = await postJson("/api/v1/auth/refresh", { refreshToken: login.token.refreshToken });
             appendLog("액세스 토큰 재발급 성공", refreshed);
+
+            accessToken = refreshed.accessToken;
+            document.getElementById("create-alarm").disabled = false;
+            document.getElementById("update-alarm").disabled = true;
+            document.getElementById("delete-alarm").disabled = true;
         } catch (err) {
             appendLog("시나리오 실행 실패", err);
+        }
+    });
+
+    const authFetch = async (url, method, payload) => {
+        const res = await fetch(url, {
+            method,
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${accessToken}`
+            },
+            body: payload ? JSON.stringify(payload) : null
+        });
+        const text = await res.text();
+        let body;
+        try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+        if (!res.ok) {
+            throw { status: res.status, body };
+        }
+        return body;
+    };
+
+    document.getElementById("create-alarm").addEventListener("click", async () => {
+        if (!accessToken) {
+            appendLog("먼저 시나리오를 실행해 로그인하세요.", null);
+            return;
+        }
+        try {
+            const payload = {
+                name: document.getElementById("alarm-name").value,
+                description: "테스트 알람",
+                alarmType: "TIME",
+                scheduleType: "ONCE",
+                runAt: new Date(Date.now() + 3600 * 1000).toISOString(),
+                timezone: "Asia/Seoul",
+                channel: "EMAIL",
+                targetAddress: document.getElementById("alarm-target").value,
+                conditions: [
+                    {
+                        conditionType: "TIME_RANGE",
+                        operator: "EQ",
+                        fieldKey: "hour",
+                        fieldValue: "10"
+                    }
+                ]
+            };
+            const created = await authFetch("/api/v1/alarms", "POST", payload);
+            alarmId = created.id;
+            appendLog("알람 생성 완료", created);
+            document.getElementById("update-alarm").disabled = false;
+            document.getElementById("delete-alarm").disabled = false;
+        } catch (err) {
+            appendLog("알람 생성 실패", err);
+        }
+    });
+
+    document.getElementById("update-alarm").addEventListener("click", async () => {
+        if (!alarmId) {
+            appendLog("먼저 알람을 생성하세요.", null);
+            return;
+        }
+        try {
+            const payload = {
+                name: document.getElementById("alarm-name").value + " (수정)",
+                description: "수정된 알람",
+                alarmType: "TIME",
+                scheduleType: "RECURRING",
+                cronExpression: "0 0 * * * *",
+                runAt: null,
+                timezone: "Asia/Seoul",
+                channel: "EMAIL",
+                targetAddress: document.getElementById("alarm-target").value,
+                status: "ACTIVE",
+                conditions: [
+                    {
+                        conditionType: "CUSTOM",
+                        operator: "CONTAINS",
+                        fieldKey: "payload",
+                        fieldValue: "hello"
+                    }
+                ]
+            };
+            const updated = await authFetch(`/api/v1/alarms/${alarmId}`, "PUT", payload);
+            appendLog("알람 수정 완료", updated);
+        } catch (err) {
+            appendLog("알람 수정 실패", err);
+        }
+    });
+
+    document.getElementById("delete-alarm").addEventListener("click", async () => {
+        if (!alarmId) {
+            appendLog("삭제할 알람이 없습니다.", null);
+            return;
+        }
+        try {
+            await authFetch(`/api/v1/alarms/${alarmId}`, "DELETE");
+            appendLog("알람 삭제 완료", { alarmId });
+            alarmId = null;
+            document.getElementById("update-alarm").disabled = true;
+            document.getElementById("delete-alarm").disabled = true;
+        } catch (err) {
+            appendLog("알람 삭제 실패", err);
         }
     });
 </script>
