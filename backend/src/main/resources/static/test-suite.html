@@ -28,6 +28,13 @@
 </section>
 
 <section>
+    <h3>인증 코드 입력</h3>
+    <p>이메일로 받은 6자리 코드를 입력하면 자동으로 인증 요청을 전송합니다.</p>
+    <input type="text" id="verification-code" placeholder="예: 123456" maxlength="6" />
+    <button id="verify-code">코드 검증</button>
+</section>
+
+<section>
     <h3>로그</h3>
     <pre id="log"></pre>
 </section>
@@ -62,10 +69,13 @@
         logEl.textContent = "";
     });
 
+    let currentEmail = "";
+
     runFlowButton.addEventListener("click", async () => {
         const email = document.getElementById("test-email").value;
         const password = document.getElementById("test-password").value;
         const name = document.getElementById("test-name").value;
+        currentEmail = email;
 
         let refreshToken = "";
         try {
@@ -88,6 +98,24 @@
         } catch (err) {
             appendLog("오류 발생", err);
         }
+    });
+
+    document.getElementById("verify-code").addEventListener("click", async () => {
+        const code = document.getElementById("verification-code").value.trim();
+        if (!currentEmail) {
+            appendLog("먼저 회원 가입을 실행해주세요.", null);
+            return;
+        }
+        if (code.length !== 6) {
+            appendLog("인증 코드는 6자리여야 합니다.", null);
+            return;
+        }
+        try {
+            appendLog("인증 코드 검증", { email: currentEmail, code });
+            await postJson("/api/v1/email-verifications/verify", { email: currentEmail, code });
+            appendLog("인증 코드 검증 완료", null);
+        } catch (err) {
+            appendLog("코드 검증 실패", err);
     });
 </script>
 </body>
