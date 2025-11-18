@@ -2,10 +2,12 @@ package kr.hjun.backend.controller;
 
 import jakarta.validation.Valid;
 import kr.hjun.backend.dto.*;
+import kr.hjun.backend.dto.AlarmExecutionLogResponse;
 import kr.hjun.backend.entity.Alarm;
 import kr.hjun.backend.repository.AlarmRepository;
 import kr.hjun.backend.security.CustomUserDetails;
 import kr.hjun.backend.service.AlarmExecutionService;
+import kr.hjun.backend.service.AlarmLogService;
 import kr.hjun.backend.service.AlarmService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +23,7 @@ public class AlarmController {
 
     private final AlarmService alarmService;
     private final AlarmExecutionService alarmExecutionService;
+    private final AlarmLogService alarmLogService;
     private final AlarmRepository alarmRepository;
 
     // 알람을 생성한다.
@@ -72,5 +75,13 @@ public class AlarmController {
                 .orElseThrow(() -> new kr.hjun.backend.exception.ChronosException(org.springframework.http.HttpStatus.NOT_FOUND, "알람을 찾을 수 없습니다."));
         AlarmSimulationResponse response = alarmExecutionService.simulate(alarm, request.toContext(), request.sendNotification());
         return ResponseEntity.ok(response);
+    }
+
+    // 알람 실행 로그를 조회한다.
+    @GetMapping("/{alarmId}/logs")
+    public ResponseEntity<List<AlarmExecutionLogResponse>> getLogs(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                                                   @PathVariable Long alarmId) {
+        List<AlarmExecutionLogResponse> logs = alarmLogService.getLogs(userDetails.getId(), alarmId);
+        return ResponseEntity.ok(logs);
     }
 }

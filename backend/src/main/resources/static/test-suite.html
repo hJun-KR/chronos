@@ -56,8 +56,12 @@
         <input type="text" id="alarm-target" value="alarm@example.com"/>
         <button id="create-alarm" disabled>알람 생성</button>
         <button id="update-alarm" disabled>알람 수정</button>
+        <button id="simulate-alarm" disabled>알람 시뮬레이션</button>
+        <button id="fetch-logs" disabled>실행 로그 조회</button>
         <button id="delete-alarm" disabled>알람 삭제</button>
     </div>
+    <label>시뮬레이션 컨텍스트(JSON)</label>
+    <textarea id="simulation-context" placeholder='{"weatherData":{"temp":10},"customData":{"payload":"hello"}}'></textarea>
 </section>
 <section>
     <h3>로그</h3>
@@ -227,6 +231,8 @@
             appendLog("알람 생성 완료", created);
             document.getElementById("update-alarm").disabled = false;
             document.getElementById("delete-alarm").disabled = false;
+            document.getElementById("simulate-alarm").disabled = false;
+            document.getElementById("fetch-logs").disabled = false;
         } catch (err) {
             appendLog("알람 생성 실패", err);
         }
@@ -276,8 +282,51 @@
             alarmId = null;
             document.getElementById("update-alarm").disabled = true;
             document.getElementById("delete-alarm").disabled = true;
+            document.getElementById("simulate-alarm").disabled = true;
+            document.getElementById("fetch-logs").disabled = true;
         } catch (err) {
             appendLog("알람 삭제 실패", err);
+        }
+    });
+
+    document.getElementById("simulate-alarm").addEventListener("click", async () => {
+        if (!alarmId) {
+            appendLog("먼저 알람을 생성하세요.", null);
+            return;
+        }
+        try {
+            const contextText = document.getElementById("simulation-context").value;
+            let payload = {};
+            if (contextText.trim()) {
+                try {
+                    payload = JSON.parse(contextText);
+                } catch {
+                    appendLog("JSON 형식이 올바르지 않습니다.", null);
+                    return;
+                }
+            }
+            const response = await authFetch(`/api/v1/alarms/${alarmId}/simulate`, "POST", {
+                weatherData: payload.weatherData,
+                stockData: payload.stockData,
+                customData: payload.customData,
+                sendNotification: payload.sendNotification ?? false
+            });
+            appendLog("알람 시뮬레이션 결과", response);
+        } catch (err) {
+            appendLog("알람 시뮬레이션 실패", err);
+        }
+    });
+
+    document.getElementById("fetch-logs").addEventListener("click", async () => {
+        if (!alarmId) {
+            appendLog("먼저 알람을 생성하세요.", null);
+            return;
+        }
+        try {
+            const logs = await authFetch(`/api/v1/alarms/${alarmId}/logs`, "GET");
+            appendLog("알람 실행 로그", logs);
+        } catch (err) {
+            appendLog("로그 조회 실패", err);
         }
     });
 </script>

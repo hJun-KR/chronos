@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 public class AlarmExecutionServiceImpl implements AlarmExecutionService {
 
     private final ConditionEvaluationService conditionEvaluationService;
+    private final ConditionContextProvider conditionContextProvider;
     private final NotificationService notificationService;
     private final AlarmSchedulingService alarmSchedulingService;
     private final AlarmExecutionLogRepository executionLogRepository;
@@ -27,7 +28,8 @@ public class AlarmExecutionServiceImpl implements AlarmExecutionService {
     @Override
     @Transactional
     public void execute(Alarm alarm) {
-        boolean shouldRun = conditionEvaluationService.evaluate(alarm.getConditions(), ConditionContext.empty());
+        ConditionContext context = conditionContextProvider.buildContext(alarm);
+        boolean shouldRun = conditionEvaluationService.evaluate(alarm.getConditions(), context);
         if (!shouldRun) {
             log.info("조건이 충족되지 않아 알람 실행을 건너뜀: {}", alarm.getId());
             updateScheduling(alarm, "SKIPPED");
@@ -47,8 +49,8 @@ public class AlarmExecutionServiceImpl implements AlarmExecutionService {
     // 사용자 입력 컨텍스트로 시뮬레이션한다.
     @Override
     public AlarmSimulationResponse simulate(Alarm alarm, ConditionContext context, boolean sendNotification) {
-        boolean shouldRun = conditionEvaluationService.evaluate(alarm.getConditions(),
-                context != null ? context : ConditionContext.empty());
+        ConditionContext evaluatedContext = context != null ? context : conditionContextProvider.buildContext(alarm);
+        boolean shouldRun = conditionEvaluationService.evaluate(alarm.getConditions(), evaluatedContext);
         if (!shouldRun) {
             return new AlarmSimulationResponse(false, false, "조건이 충족되지 않았습니다.");
         }

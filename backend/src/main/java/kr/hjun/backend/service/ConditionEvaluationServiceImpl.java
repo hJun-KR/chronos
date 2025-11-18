@@ -18,11 +18,12 @@ public class ConditionEvaluationServiceImpl implements ConditionEvaluationServic
     // 조건을 평가한다.
     @Override
     public boolean evaluate(List<AlarmCondition> conditions, ConditionContext context) {
+        ConditionContext ctx = context != null ? context : ConditionContext.empty();
         for (AlarmCondition condition : conditions) {
             Object actual = switch (condition.getConditionType()) {
-                case WEATHER -> context.weatherData().get(condition.getFieldKey());
-                case STOCK -> context.stockData().get(condition.getFieldKey());
-                case TIME_RANGE, CUSTOM -> context.customData().get(condition.getFieldKey());
+                case WEATHER -> ctx.weatherData().get(condition.getFieldKey());
+                case STOCK -> ctx.stockData().get(condition.getFieldKey());
+                case TIME_RANGE, CUSTOM -> ctx.customData().get(condition.getFieldKey());
             };
             boolean result = evaluateCondition(condition, actual);
             if (!result) {

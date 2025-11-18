@@ -1,5 +1,6 @@
 package kr.hjun.backend.service;
 
+import kr.hjun.backend.dto.AlarmSimulationResponse;
 import kr.hjun.backend.entity.Alarm;
 import kr.hjun.backend.entity.AlarmCondition;
 import kr.hjun.backend.entity.AlarmExecutionLog;
@@ -38,6 +39,9 @@ class AlarmExecutionServiceImplTest {
     @Mock
     private AlarmRepository alarmRepository;
 
+    @Mock
+    private ConditionContextProvider conditionContextProvider;
+
     @InjectMocks
     private AlarmExecutionServiceImpl alarmExecutionService;
 
@@ -47,6 +51,7 @@ class AlarmExecutionServiceImplTest {
     void executeSuccess() {
         Alarm alarm = sampleAlarm();
         when(conditionEvaluationService.evaluate(eq(alarm.getConditions()), any())).thenReturn(true);
+        when(conditionContextProvider.buildContext(alarm)).thenReturn(ConditionContext.empty());
 
         alarmExecutionService.execute(alarm);
 
@@ -61,11 +66,25 @@ class AlarmExecutionServiceImplTest {
     void executeSkip() {
         Alarm alarm = sampleAlarm();
         when(conditionEvaluationService.evaluate(eq(alarm.getConditions()), any())).thenReturn(false);
+        when(conditionContextProvider.buildContext(alarm)).thenReturn(ConditionContext.empty());
 
         alarmExecutionService.execute(alarm);
 
         verify(notificationService, never()).send(any(), any());
         verify(executionLogRepository, never()).save(any());
+    }
+
+    // 시뮬레이션에서 조건 충족 시 결과를 반환한다.
+    @Test
+    @DisplayName("알람 시뮬레이션 성공")
+    void simulateSuccess() {
+        Alarm alarm = sampleAlarm();
+        when(conditionEvaluationService.evaluate(eq(alarm.getConditions()), any())).thenReturn(true);
+
+        AlarmSimulationResponse response = alarmExecutionService.simulate(alarm, ConditionContext.empty(), true);
+
+        assertThat(response.conditionsMet()).isTrue();
+        assertThat(response.notificationSent()).isTrue();
     }
 
     private Alarm sampleAlarm() {
