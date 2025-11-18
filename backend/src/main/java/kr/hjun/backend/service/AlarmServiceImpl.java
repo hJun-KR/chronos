@@ -26,6 +26,7 @@ public class AlarmServiceImpl implements AlarmService {
     private final AlarmRepository alarmRepository;
     private final UserRepository userRepository;
     private final AlarmSchedulingService alarmSchedulingService;
+    private final org.springframework.beans.factory.ObjectProvider<kr.hjun.backend.scheduler.AlarmScheduler> alarmSchedulerProvider;
 
     // 알람을 생성한다.
     @Override
@@ -49,6 +50,7 @@ public class AlarmServiceImpl implements AlarmService {
         setConditions(alarm, request.getConditions());
         alarmSchedulingService.updateNextRun(alarm);
         Alarm saved = alarmRepository.save(alarm);
+        alarmSchedulerProvider.ifAvailable(scheduler -> scheduler.schedule(saved));
         return AlarmResponse.from(saved);
     }
 
@@ -71,7 +73,9 @@ public class AlarmServiceImpl implements AlarmService {
         setConditions(alarm, request.getConditions());
         alarmSchedulingService.updateNextRun(alarm);
 
-        return AlarmResponse.from(alarm);
+        AlarmResponse response = AlarmResponse.from(alarm);
+        alarmSchedulerProvider.ifAvailable(scheduler -> scheduler.schedule(alarm));
+        return response;
     }
 
     // 알람을 조회한다.
@@ -97,6 +101,7 @@ public class AlarmServiceImpl implements AlarmService {
     public void deleteAlarm(Long userId, Long alarmId) {
         Alarm alarm = getOwnedAlarm(userId, alarmId);
         alarmRepository.delete(alarm);
+        alarmSchedulerProvider.ifAvailable(scheduler -> scheduler.cancel(alarmId));
     }
 
     // 요청 조건을 엔티티로 반영한다.
