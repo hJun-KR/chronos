@@ -2,14 +2,13 @@ package kr.hjun.backend.controller;
 
 import jakarta.validation.Valid;
 import kr.hjun.backend.dto.*;
+import kr.hjun.backend.security.CustomUserDetails;
 import kr.hjun.backend.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @Validated
@@ -44,6 +43,14 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@Valid @RequestBody TokenInvalidateRequest request) {
         authService.logout(request);
+        return ResponseEntity.noContent().build();
+    }
+
+    // 비밀번호 변경 요청을 처리한다.
+    @PatchMapping("/password")
+    public ResponseEntity<Void> changePassword(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                               @Valid @RequestBody PasswordChangeRequest request) {
+        authService.changePassword(userDetails.getId(), request);
         return ResponseEntity.noContent().build();
     }
 }

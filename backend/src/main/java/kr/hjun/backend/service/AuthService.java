@@ -15,4 +15,7 @@ public interface AuthService {
 
     // 리프레시 토큰을 폐기한다.
     void logout(TokenInvalidateRequest request);
+
+    // 사용자의 비밀번호를 변경한다.
+    void changePassword(Long userId, PasswordChangeRequest request);
 }

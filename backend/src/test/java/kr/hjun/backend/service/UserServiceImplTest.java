@@ -1,6 +1,7 @@
 package kr.hjun.backend.service;
 
 import kr.hjun.backend.dto.LoginRequest;
+import kr.hjun.backend.dto.PasswordChangeRequest;
 import kr.hjun.backend.dto.UserCreateRequest;
 import kr.hjun.backend.entity.User;
 import kr.hjun.backend.exception.ChronosException;
@@ -109,6 +110,53 @@ class UserServiceImplTest {
         loginRequest.setPassword("invalid123");
 
         assertThatThrownBy(() -> userService.login(loginRequest))
+                .isInstanceOf(ChronosException.class);
+    }
+
+    // 비밀번호 변경에 성공한다.
+    @Test
+    @DisplayName("비밀번호 변경 성공")
+    void changePassword_success() {
+        UserCreateRequest request = new UserCreateRequest();
+        request.setEmail("change@example.com");
+        request.setPassword("password123");
+        request.setName("사용자");
+        User saved = userService.register(request);
+        saved.setActive(true);
+        userRepository.save(saved);
+
+        PasswordChangeRequest changeRequest = new PasswordChangeRequest();
+        changeRequest.setOldPassword("password123");
+        changeRequest.setNewPassword("newPassword1!");
+
+        userService.changePassword(saved.getId(), changeRequest);
+
+        User updated = userRepository.findById(saved.getId()).orElseThrow();
+        LoginRequest loginRequest = new LoginRequest();
+        loginRequest.setEmail("change@example.com");
+        loginRequest.setPassword("newPassword1!");
+        User loggedIn = userService.login(loginRequest);
+
+        assertThat(loggedIn.getId()).isEqualTo(saved.getId());
+    }
+
+    // 비밀번호 변경 시 현재 비밀번호가 틀리면 실패한다.
+    @Test
+    @DisplayName("비밀번호 변경 실패 - 현재 비밀번호 불일치")
+    void changePassword_wrongOldPassword() {
+        UserCreateRequest request = new UserCreateRequest();
+        request.setEmail("wrongchange@example.com");
+        request.setPassword("password123");
+        request.setName("사용자");
+        User saved = userService.register(request);
+        saved.setActive(true);
+        userRepository.save(saved);
+
+        PasswordChangeRequest changeRequest = new PasswordChangeRequest();
+        changeRequest.setOldPassword("invalid");
+        changeRequest.setNewPassword("newPassword1!");
+
+        assertThatThrownBy(() -> userService.changePassword(saved.getId(), changeRequest))
                 .isInstanceOf(ChronosException.class);
     }
 }

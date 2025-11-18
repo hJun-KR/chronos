@@ -1,6 +1,7 @@
 package kr.hjun.backend.service;
 
 import kr.hjun.backend.dto.LoginRequest;
+import kr.hjun.backend.dto.PasswordChangeRequest;
 import kr.hjun.backend.dto.UserCreateRequest;
 import kr.hjun.backend.entity.User;
 import kr.hjun.backend.exception.ChronosException;
@@ -47,5 +48,19 @@ public class UserServiceImpl implements UserService {
         }
 
         return user;
+    }
+
+    // 비밀번호를 변경한다.
+    @Override
+    @Transactional
+    public void changePassword(Long userId, PasswordChangeRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ChronosException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new ChronosException(HttpStatus.UNAUTHORIZED, "현재 비밀번호가 올바르지 않습니다.");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
     }
 }

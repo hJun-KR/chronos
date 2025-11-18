@@ -51,6 +51,12 @@ public class AuthServiceImpl implements AuthService {
         refreshTokenService.revoke(request.getRefreshToken());
     }
 
+    // 사용자의 비밀번호를 변경한다.
+    @Override
+    public void changePassword(Long userId, PasswordChangeRequest request) {
+        userService.changePassword(userId, request);
+    }
+
     // 사용자에게 액세스/리프레시 토큰을 발급한다.
     private TokenResponse issueTokens(User user) {
         RefreshToken refreshToken = refreshTokenService.create(user);
