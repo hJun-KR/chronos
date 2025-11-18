@@ -60,8 +60,28 @@
         <button id="fetch-logs" disabled>실행 로그 조회</button>
         <button id="delete-alarm" disabled>알람 삭제</button>
     </div>
+    <label>조건 리스트(JSON 배열)</label>
+    <textarea id="alarm-condition-json" placeholder='[
+  {
+    "conditionType": "WEATHER",
+    "operator": "LT",
+    "fieldKey": "T1H",
+    "fieldValue": "5",
+    "extraJson": {
+      "base_date": "20251119",
+      "base_time": "0600",
+      "nx": "55",
+      "ny": "127"
+    }
+  }
+]'></textarea>
     <label>시뮬레이션 컨텍스트(JSON)</label>
-    <textarea id="simulation-context" placeholder='{"weatherData":{"temp":10},"customData":{"payload":"hello"}}'></textarea>
+    <textarea id="simulation-context" placeholder='{
+  "weatherData": {"T1H": 8},
+  "stockData": {"price": 65000},
+  "customData": {"payload": "hello"},
+  "sendNotification": false
+}'></textarea>
 </section>
 <section>
     <h3>로그</h3>
@@ -184,6 +204,19 @@
         }
     });
 
+    const parseJsonInput = (id, defaultValue) => {
+        const text = document.getElementById(id).value.trim();
+        if (!text) {
+            return defaultValue;
+        }
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            appendLog(`${id} JSON 파싱 실패`, e);
+            throw e;
+        }
+    };
+
     const authFetch = async (url, method, payload) => {
         const res = await fetch(url, {
             method,
@@ -208,6 +241,7 @@
             return;
         }
         try {
+            const conditions = parseJsonInput("alarm-condition-json", []);
             const payload = {
                 name: document.getElementById("alarm-name").value,
                 description: "테스트 알람",
@@ -217,14 +251,7 @@
                 timezone: "Asia/Seoul",
                 channel: "EMAIL",
                 targetAddress: document.getElementById("alarm-target").value,
-                conditions: [
-                    {
-                        conditionType: "TIME_RANGE",
-                        operator: "EQ",
-                        fieldKey: "hour",
-                        fieldValue: "10"
-                    }
-                ]
+                conditions
             };
             const created = await authFetch("/api/v1/alarms", "POST", payload);
             alarmId = created.id;
@@ -244,6 +271,7 @@
             return;
         }
         try {
+            const conditions = parseJsonInput("alarm-condition-json", []);
             const payload = {
                 name: document.getElementById("alarm-name").value + " (수정)",
                 description: "수정된 알람",
@@ -255,14 +283,7 @@
                 channel: "EMAIL",
                 targetAddress: document.getElementById("alarm-target").value,
                 status: "ACTIVE",
-                conditions: [
-                    {
-                        conditionType: "CUSTOM",
-                        operator: "CONTAINS",
-                        fieldKey: "payload",
-                        fieldValue: "hello"
-                    }
-                ]
+                conditions
             };
             const updated = await authFetch(`/api/v1/alarms/${alarmId}`, "PUT", payload);
             appendLog("알람 수정 완료", updated);
@@ -295,16 +316,7 @@
             return;
         }
         try {
-            const contextText = document.getElementById("simulation-context").value;
-            let payload = {};
-            if (contextText.trim()) {
-                try {
-                    payload = JSON.parse(contextText);
-                } catch {
-                    appendLog("JSON 형식이 올바르지 않습니다.", null);
-                    return;
-                }
-            }
+            const payload = parseJsonInput("simulation-context", {});
             const response = await authFetch(`/api/v1/alarms/${alarmId}/simulate`, "POST", {
                 weatherData: payload.weatherData,
                 stockData: payload.stockData,
