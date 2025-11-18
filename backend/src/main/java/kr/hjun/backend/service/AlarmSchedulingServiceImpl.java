@@ -17,12 +17,14 @@ public class AlarmSchedulingServiceImpl implements AlarmSchedulingService {
     // 알람의 다음 실행 시간을 계산한다.
     @Override
     public void updateNextRun(Alarm alarm) {
+        ZoneId zoneId = ZoneId.of(alarm.getTimezone());
         if (alarm.getScheduleType() == Alarm.ScheduleType.ONCE) {
             LocalDateTime runAt = alarm.getRunAt();
             if (runAt == null) {
                 throw new ChronosException(HttpStatus.BAD_REQUEST, "단발성 알람은 runAt이 필요합니다.");
             }
-            alarm.setNextRunAt(runAt.isAfter(LocalDateTime.now()) ? runAt : null);
+            LocalDateTime now = LocalDateTime.now(zoneId);
+            alarm.setNextRunAt(runAt.isAfter(now) ? runAt : null);
             return;
         }
 
@@ -33,7 +35,6 @@ public class AlarmSchedulingServiceImpl implements AlarmSchedulingService {
 
         try {
             CronExpression cronExpression = CronExpression.parse(cron);
-            ZoneId zoneId = ZoneId.of(alarm.getTimezone());
             LocalDateTime next = cronExpression.next(LocalDateTime.now(zoneId));
             alarm.setNextRunAt(next);
         } catch (IllegalArgumentException e) {
