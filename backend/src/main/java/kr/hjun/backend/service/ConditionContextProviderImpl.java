@@ -68,7 +68,8 @@ public class ConditionContextProviderImpl implements ConditionContextProvider {
             stockData.putAll(remote);
         }
 
-        return new ConditionContext(weatherData, stockData, customData);
+        String timezone = alarm.getTimezone() != null ? alarm.getTimezone() : "Asia/Seoul";
+        return new ConditionContext(weatherData, stockData, customData, timezone);
     }
 
     private Map<String, Object> parseExtras(String json) {

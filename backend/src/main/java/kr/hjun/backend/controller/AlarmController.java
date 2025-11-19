@@ -73,7 +73,11 @@ public class AlarmController {
                                                             @RequestBody AlarmSimulationRequest request) {
         Alarm alarm = alarmRepository.findByIdAndUserId(alarmId, userDetails.getId())
                 .orElseThrow(() -> new kr.hjun.backend.exception.ChronosException(org.springframework.http.HttpStatus.NOT_FOUND, "알람을 찾을 수 없습니다."));
-        AlarmSimulationResponse response = alarmExecutionService.simulate(alarm, request.toContext(), request.sendNotification());
+        AlarmSimulationResponse response = alarmExecutionService.simulate(
+                alarm,
+                request.toContext(alarm.getTimezone()),
+                request.sendNotification()
+        );
         return ResponseEntity.ok(response);
     }
 

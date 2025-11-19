@@ -8,6 +8,7 @@ import kr.hjun.backend.exception.ChronosException;
 import org.springframework.http.HttpStatus;
 
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
@@ -20,17 +21,28 @@ public class ConditionEvaluationServiceImpl implements ConditionEvaluationServic
     public boolean evaluate(List<AlarmCondition> conditions, ConditionContext context) {
         ConditionContext ctx = context != null ? context : ConditionContext.empty();
         for (AlarmCondition condition : conditions) {
-            Object actual = switch (condition.getConditionType()) {
-                case WEATHER -> ctx.weatherData().get(condition.getFieldKey());
-                case STOCK -> ctx.stockData().get(condition.getFieldKey());
-                case TIME_RANGE, CUSTOM -> ctx.customData().get(condition.getFieldKey());
-            };
+            Object actual = resolveActualValue(condition, ctx);
             boolean result = evaluateCondition(condition, actual);
             if (!result) {
                 return false;
             }
         }
         return true;
+    }
+
+    private Object resolveActualValue(AlarmCondition condition, ConditionContext ctx) {
+        return switch (condition.getConditionType()) {
+            case WEATHER -> ctx.weatherData().get(condition.getFieldKey());
+            case STOCK -> ctx.stockData().get(condition.getFieldKey());
+            case CUSTOM -> ctx.customData().get(condition.getFieldKey());
+            case TIME_RANGE -> {
+                Object value = ctx.customData().get(condition.getFieldKey());
+                if (value != null) {
+                    yield value;
+                }
+                yield LocalTime.now(resolveZoneId(ctx)).toString();
+            }
+        };
     }
 
     private boolean evaluateCondition(AlarmCondition condition, Object actualValue) {
@@ -96,5 +108,17 @@ public class ConditionEvaluationServiceImpl implements ConditionEvaluationServic
             return LocalTime.of(Integer.parseInt(trimmed), 0);
         }
         return LocalTime.parse(trimmed.length() == 5 ? trimmed : trimmed.substring(0, 5));
+    }
+
+    private ZoneId resolveZoneId(ConditionContext context) {
+        String timezone = context.timezone();
+        if (timezone == null || timezone.isBlank()) {
+            return ZoneId.of("Asia/Seoul");
+        }
+        try {
+            return ZoneId.of(timezone);
+        } catch (Exception e) {
+            return ZoneId.of("Asia/Seoul");
+        }
     }
 }

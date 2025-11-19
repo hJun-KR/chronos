@@ -155,11 +155,26 @@
     const fetchLogsBtn = document.getElementById("fetch-logs");
     const runNowBtn = document.getElementById("run-now");
 
+    hourlyBtn.disabled = true;
+    runNowBtn.disabled = true;
+
     clearLogButton.addEventListener("click", () => {
         logEl.textContent = "";
     });
 
     runAtInput.value = new Date(Date.now() + 3600000).toISOString().slice(0, 16);
+
+    const toggleScheduleInputs = () => {
+        if (scheduleTypeSelect.value === "ONCE") {
+            runAtInput.disabled = false;
+            cronInput.disabled = true;
+        } else {
+            runAtInput.disabled = true;
+            cronInput.disabled = false;
+        }
+    };
+    scheduleTypeSelect.addEventListener("change", toggleScheduleInputs);
+    toggleScheduleInputs();
 
     let currentEmail = "";
     let accessToken = "";
@@ -331,6 +346,14 @@
             const conditions = parseJsonInput("alarm-condition-json", []);
             const scheduleType = scheduleTypeSelect.value;
             const runAtValue = runAtInput.value ? new Date(runAtInput.value).toISOString() : null;
+            if (scheduleType === "ONCE" && !runAtValue) {
+                appendLog("ONCE 알람은 실행 시각(runAt)이 필요합니다.", null);
+                return;
+            }
+            if (scheduleType === "RECURRING" && !cronInput.value.trim()) {
+                appendLog("RECURRING 알람은 CRON 표현식이 필요합니다.", null);
+                return;
+            }
             const payload = {
                 name: document.getElementById("alarm-name").value,
                 description: "테스트 알람",
@@ -372,6 +395,10 @@
             const conditions = parseJsonInput("alarm-condition-json", []);
             const scheduleType = scheduleTypeSelect.value;
             const runAtValue = runAtInput.value ? new Date(runAtInput.value).toISOString() : null;
+            if (scheduleType === "ONCE" && !runAtValue) {
+                appendLog("ONCE 알람은 실행 시각(runAt)이 필요합니다.", null);
+                return;
+            }
             const payload = {
                 name: document.getElementById("alarm-name").value + " (수정)",
                 description: "수정된 알람",
@@ -414,7 +441,7 @@
         }
     });
 
-    document.getElementById("simulate-alarm").addEventListener("click", async () => {
+    simulateAlarmBtn.addEventListener("click", async () => {
         if (!alarmId) {
             appendLog("먼저 알람을 생성하세요.", null);
             return;
@@ -433,7 +460,7 @@
         }
     });
 
-    document.getElementById("fetch-logs").addEventListener("click", async () => {
+    fetchLogsBtn.addEventListener("click", async () => {
         if (!alarmId) {
             appendLog("먼저 알람을 생성하세요.", null);
             return;
@@ -509,6 +536,7 @@
             runAtInput.value = alarm.runAt.substring(0, 16);
         }
         cronInput.value = alarm.cronExpression ?? cronInput.value;
+        toggleScheduleInputs();
         updateAlarmBtn.disabled = false;
         deleteAlarmBtn.disabled = false;
         simulateAlarmBtn.disabled = false;

@@ -23,7 +23,7 @@ class ConditionEvaluationServiceImplTest {
                 .fieldValue("10")
                 .build();
 
-        ConditionContext context = new ConditionContext(Map.of("temp", "10"), Map.of(), Map.of());
+        ConditionContext context = new ConditionContext(Map.of("temp", "10"), Map.of(), Map.of(), "Asia/Seoul");
         boolean result = conditionEvaluationService.evaluate(List.of(condition), context);
 
         assertThat(result).isTrue();
@@ -38,7 +38,7 @@ class ConditionEvaluationServiceImplTest {
                 .fieldKey("time")
                 .fieldValue("09:00,12:00")
                 .build();
-        ConditionContext context = new ConditionContext(Map.of(), Map.of(), Map.of("time", "10:30"));
+        ConditionContext context = new ConditionContext(Map.of(), Map.of(), Map.of("time", "10:30"), "Asia/Seoul");
         boolean result = conditionEvaluationService.evaluate(List.of(condition), context);
         assertThat(result).isTrue();
     }
