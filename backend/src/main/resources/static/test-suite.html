@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Chronos API Quick Test</title>
+    <style>
+        body { font-family: sans-serif; margin: 2rem; background: #fafafa; }
+        button { padding: .6rem 1rem; margin-right: .5rem; cursor: pointer; }
+        textarea { width: 100%; height: 120px; margin-top: 1rem; }
+        pre { background: #111; color: #eee; padding: 1rem; border-radius: 6px; max-height: 360px; overflow: auto; }
+    </style>
+</head>
+<body>
+<h1>Chronos Frontend Test Suite</h1>
+<p>이 페이지는 회원가입 → 이메일 인증 → 로그인 → 알람 생성까지 시나리오를 순차적으로 호출해 줍니다.</p>
+
+<section>
+    <h3>1. 회원가입 & 코드 발송</h3>
+    <label>테스트 이메일</label>
+    <input type="email" id="test-email" value="test+1@example.com" />
+    <label>비밀번호</label>
+    <input type="password" id="test-password" value="Test12345!" />
+    <label>이름</label>
+    <input type="text" id="test-name" value="테스터" />
+    <div style="margin-top: 1rem;">
+        <button id="register-and-send">회원가입 & 코드 발송</button>
+        <button id="clear-log">로그 초기화</button>
+    </div>
+</section>
+
+<section>
+    <h3>2. 인증 코드 발송 / 검증</h3>
+    <p>아래 버튼으로 인증 코드를 다시 보내거나, 받은 코드를 입력해 검증할 수 있습니다.</p>
+    <div>
+        <button id="resend-code">인증 코드 재발송</button>
+    </div>
+    <div style="margin-top: 0.5rem;">
+        <input type="text" id="verification-code" placeholder="예: 123456" maxlength="6" />
+        <button id="verify-code">코드 검증</button>
+    </div>
+</section>
+
+<section>
+    <h3>3. 시나리오 실행</h3>
+    <p>인증이 완료되면 아래 버튼으로 로그인/토큰 재발급 등 후속 흐름을 실행합니다.</p>
+    <button id="run-scenario" disabled>시나리오 실행 (로그인 & 재발급)</button>
+</section>
+
+<section>
+    <h3>4. 알람 테스트</h3>
+    <p>로그인 결과에서 받은 토큰을 사용해 알람 CRUD를 빠르게 테스트합니다.</p>
+    <div>
+        <label>알람 이름</label>
+        <input type="text" id="alarm-name" value="테스트 알람"/>
+        <label>타겟</label>
+        <input type="text" id="alarm-target" value="alarm@example.com" placeholder="이메일 또는 Discord Webhook URL"/>
+        <label>채널</label>
+        <select id="channel-select">
+            <option value="EMAIL">EMAIL</option>
+            <option value="DISCORD">DISCORD</option>
+        </select>
+        <label>스케줄 유형</label>
+        <select id="schedule-type">
+            <option value="ONCE">ONCE</option>
+            <option value="RECURRING">RECURRING</option>
+        </select>
+        <label>실행 시각(runAt)</label>
+        <input type="datetime-local" id="run-at"/>
+        <label>CRON 표현식</label>
+        <input type="text" id="cron-expression" placeholder="예: 0 0 * * * *"/>
+        <label>반복 유형</label>
+        <select id="recurrence-type">
+            <option value="">직접 CRON 사용</option>
+            <option value="DAILY">매일</option>
+            <option value="WEEKLY">요일 지정</option>
+            <option value="MONTHLY">매월</option>
+            <option value="YEARLY">매년</option>
+        </select>
+        <div id="weekday-group" style="margin:0.5rem 0;">
+            <label><input type="checkbox" class="weekday-chk" value="MONDAY">월</label>
+            <label><input type="checkbox" class="weekday-chk" value="TUESDAY">화</label>
+            <label><input type="checkbox" class="weekday-chk" value="WEDNESDAY">수</label>
+            <label><input type="checkbox" class="weekday-chk" value="THURSDAY">목</label>
+            <label><input type="checkbox" class="weekday-chk" value="FRIDAY">금</label>
+            <label><input type="checkbox" class="weekday-chk" value="SATURDAY">토</label>
+            <label><input type="checkbox" class="weekday-chk" value="SUNDAY">일</label>
+        </div>
+        <label>일자 (매월/매년)</label>
+        <input type="number" id="day-of-month" min="1" max="31" placeholder="예: 15"/>
+        <label>월 (매년)</label>
+        <input type="number" id="month-of-year" min="1" max="12" placeholder="예: 5"/>
+        <button id="hourly-btn" disabled>매시간 실행 설정</button>
+        <button id="create-alarm" disabled>알람 생성</button>
+        <button id="update-alarm" disabled>알람 수정</button>
+        <button id="fetch-alarms" disabled>알람 목록 조회</button>
+        <button id="simulate-alarm" disabled>알람 시뮬레이션</button>
+        <button id="run-now" disabled>즉시 실행</button>
+        <button id="fetch-logs" disabled>실행 로그 조회</button>
+        <button id="delete-alarm" disabled>알람 삭제</button>
+    </div>
+    <div style="margin:0.5rem 0;">
+        <label>알람 선택</label>
+        <select id="alarm-select" disabled>
+            <option value="">알람을 선택하세요</option>
+        </select>
+        <button id="apply-alarm" disabled>선택 알람 적용</button>
+    </div>
+    <label>조건 리스트(JSON 배열)</label>
+    <div style="margin-bottom:0.5rem;">
+        <select id="preset-select" disabled>
+            <option value="">프리셋을 선택하세요</option>
+        </select>
+        <button id="apply-preset" disabled>프리셋 적용</button>
+    </div>
+    <textarea id="alarm-condition-json" placeholder='[
+  {
+    "conditionType": "WEATHER",
+    "operator": "LT",
+    "fieldKey": "T1H",
+    "fieldValue": "5",
+    "extraJson": {
+      "base_date": "20251119",
+      "base_time": "0600"
+    }
+  }
+]'></textarea>
+    <label>시뮬레이션 컨텍스트(JSON)</label>
+    <textarea id="simulation-context" placeholder='{
+  "weatherData": {"T1H": 8},
+  "stockData": {"price": 65000},
+  "customData": {"payload": "hello"},
+  "sendNotification": false
+}'></textarea>
+</section>
+<section>
+    <h3>로그</h3>
+    <pre id="log"></pre>
+</section>
+
+<script>
+    const logEl = document.getElementById("log");
+    const appendLog = (msg, data) => {
+        const time = new Date().toISOString();
+        logEl.textContent += `[#${time}] ${msg}\n${data ? JSON.stringify(data, null, 2) : ""}\n\n`;
+        logEl.scrollTop = logEl.scrollHeight;
+    };
+
+    const postJson = async (url, payload) => {
+        const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const text = await res.text();
+        let body;
+        try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+        if (!res.ok) {
+            throw { status: res.status, body };
+        }
+        return body;
+    };
+
+    const registerButton = document.getElementById("register-and-send");
+    const runScenarioButton = document.getElementById("run-scenario");
+    const clearLogButton = document.getElementById("clear-log");
+    const presetSelect = document.getElementById("preset-select");
+    const applyPresetBtn = document.getElementById("apply-preset");
+    const alarmSelect = document.getElementById("alarm-select");
+    const applyAlarmBtn = document.getElementById("apply-alarm");
+    const presetCache = new Map();
+    const alarmCache = new Map();
+    const scheduleTypeSelect = document.getElementById("schedule-type");
+    const channelSelect = document.getElementById("channel-select");
+    const recurrenceTypeSelect = document.getElementById("recurrence-type");
+    const weekdayChecks = document.querySelectorAll(".weekday-chk");
+    const runAtInput = document.getElementById("run-at");
+    const cronInput = document.getElementById("cron-expression");
+    const dayOfMonthInput = document.getElementById("day-of-month");
+    const monthOfYearInput = document.getElementById("month-of-year");
+    const hourlyBtn = document.getElementById("hourly-btn");
+    const createAlarmBtn = document.getElementById("create-alarm");
+    const updateAlarmBtn = document.getElementById("update-alarm");
+    const deleteAlarmBtn = document.getElementById("delete-alarm");
+    const fetchAlarmsBtn = document.getElementById("fetch-alarms");
+    const simulateAlarmBtn = document.getElementById("simulate-alarm");
+    const fetchLogsBtn = document.getElementById("fetch-logs");
+    const runNowBtn = document.getElementById("run-now");
+
+    hourlyBtn.disabled = true;
+    runNowBtn.disabled = true;
+
+    clearLogButton.addEventListener("click", () => {
+        logEl.textContent = "";
+    });
+
+    runAtInput.value = new Date(Date.now() + 3600000).toISOString().slice(0, 16);
+
+    const getSelectedWeekdays = () => Array.from(weekdayChecks)
+        .filter(chk => chk.checked)
+        .map(chk => chk.value);
+
+    const setWeekdayChecks = (values = []) => {
+        const set = new Set(values);
+        weekdayChecks.forEach(chk => {
+            chk.checked = set.has(chk.value);
+        });
+    };
+
+    const applyRecurrenceOptions = () => {
+        const type = recurrenceTypeSelect.value;
+        if (!type) {
+            weekdayChecks.forEach(chk => {
+                chk.disabled = true;
+                chk.checked = false;
+            });
+            dayOfMonthInput.disabled = true;
+            dayOfMonthInput.value = "";
+            monthOfYearInput.disabled = true;
+            monthOfYearInput.value = "";
+            return;
+        }
+        weekdayChecks.forEach(chk => chk.disabled = type !== "WEEKLY");
+        if (type !== "WEEKLY") {
+            weekdayChecks.forEach(chk => chk.checked = false);
+        }
+        dayOfMonthInput.disabled = !(type === "MONTHLY" || type === "YEARLY");
+        if (dayOfMonthInput.disabled) dayOfMonthInput.value = "";
+        monthOfYearInput.disabled = type !== "YEARLY";
+        if (monthOfYearInput.disabled) monthOfYearInput.value = "";
+    };
+
+    const toggleScheduleInputs = () => {
+        if (scheduleTypeSelect.value === "ONCE") {
+            runAtInput.disabled = false;
+            cronInput.disabled = true;
+            recurrenceTypeSelect.disabled = true;
+            weekdayChecks.forEach(chk => chk.disabled = true);
+            dayOfMonthInput.disabled = true;
+            monthOfYearInput.disabled = true;
+        } else {
+            runAtInput.disabled = true;
+            cronInput.disabled = false;
+            recurrenceTypeSelect.disabled = false;
+            applyRecurrenceOptions();
+        }
+    };
+    scheduleTypeSelect.addEventListener("change", toggleScheduleInputs);
+    recurrenceTypeSelect.addEventListener("change", applyRecurrenceOptions);
+    toggleScheduleInputs();
+
+    let currentEmail = "";
+    let accessToken = "";
+    let alarmId = null;
+
+    const loadPresets = async () => {
+        try {
+            const res = await fetch("/api/v1/condition-presets");
+            if (!res.ok) {
+                throw new Error(`status ${res.status}`);
+            }
+            const presets = await res.json();
+            presetSelect.innerHTML = '<option value="">프리셋을 선택하세요</option>';
+            presets.forEach((preset) => {
+                presetCache.set(preset.key, preset);
+                const option = document.createElement("option");
+                option.value = preset.key;
+                option.textContent = preset.name;
+                presetSelect.appendChild(option);
+            });
+            presetSelect.disabled = false;
+            applyPresetBtn.disabled = false;
+        } catch (err) {
+            appendLog("프리셋 로드 실패", err);
+        }
+    };
+    loadPresets();
+
+    registerButton.addEventListener("click", async () => {
+        const email = document.getElementById("test-email").value;
+        const password = document.getElementById("test-password").value;
+        const name = document.getElementById("test-name").value;
+        currentEmail = email;
+
+        try {
+            appendLog("회원 가입 요청", { email, name });
+            await postJson("/api/v1/auth/register", { email, password, name });
+            appendLog("회원 가입 완료", null);
+
+            appendLog("이메일 인증 코드 발송", { email });
+            await postJson("/api/v1/email-verifications/send", { email });
+            appendLog("이메일 인증 코드 발송 완료 (메일 확인 필요)", null);
+
+            appendLog("이메일 인증 후 코드를 입력해 주세요.", null);
+            runScenarioButton.disabled = true;
+        } catch (err) {
+            appendLog("오류 발생", err);
+        }
+    });
+
+    document.getElementById("resend-code").addEventListener("click", async () => {
+        if (!currentEmail) {
+            appendLog("먼저 회원 가입을 실행해주세요.", null);
+            return;
+        }
+        try {
+            appendLog("인증 코드 재발송", { email: currentEmail });
+            await postJson("/api/v1/email-verifications/send", { email: currentEmail });
+            appendLog("재발송 요청 완료", null);
+        } catch (err) {
+            appendLog("재발송 실패", err);
+        }
+    });
+
+    document.getElementById("verify-code").addEventListener("click", async () => {
+        const code = document.getElementById("verification-code").value.trim();
+        if (!currentEmail) {
+            appendLog("먼저 회원 가입을 실행해주세요.", null);
+            return;
+        }
+        if (code.length !== 6) {
+            appendLog("인증 코드는 6자리여야 합니다.", null);
+            return;
+        }
+        try {
+            appendLog("인증 코드 검증", { email: currentEmail, code });
+            await postJson("/api/v1/email-verifications/verify", { email: currentEmail, code });
+            appendLog("인증 코드 검증 완료", null);
+            runScenarioButton.disabled = false;
+        } catch (err) {
+            appendLog("코드 검증 실패", err);
+        }
+    });
+
+    runScenarioButton.addEventListener("click", async () => {
+        if (!currentEmail) {
+            appendLog("먼저 회원 가입을 실행해주세요.", null);
+            return;
+        }
+        try {
+            appendLog("로그인 요청", { email: currentEmail });
+            const login = await postJson("/api/v1/auth/login", { email: currentEmail, password: document.getElementById("test-password").value });
+            appendLog("로그인 성공", login);
+            accessToken = login.token.accessToken;
+            alarmId = null;
+
+            appendLog("리프레시 토큰으로 재발급", { refreshToken: login.token.refreshToken });
+            const refreshed = await postJson("/api/v1/auth/refresh", { refreshToken: login.token.refreshToken });
+            appendLog("액세스 토큰 재발급 성공", refreshed);
+
+            accessToken = refreshed.accessToken;
+            createAlarmBtn.disabled = false;
+            updateAlarmBtn.disabled = true;
+            deleteAlarmBtn.disabled = true;
+            fetchAlarmsBtn.disabled = false;
+            simulateAlarmBtn.disabled = true;
+            fetchLogsBtn.disabled = true;
+            runNowBtn.disabled = true;
+            hourlyBtn.disabled = false;
+            alarmSelect.disabled = true;
+            applyAlarmBtn.disabled = true;
+        } catch (err) {
+            appendLog("시나리오 실행 실패", err);
+        }
+    });
+
+    const parseJsonInput = (id, defaultValue) => {
+        const text = document.getElementById(id).value.trim();
+        if (!text) {
+            return defaultValue;
+        }
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            appendLog(`${id} JSON 파싱 실패`, e);
+            throw e;
+        }
+    };
+
+    applyPresetBtn.addEventListener("click", () => {
+        const key = presetSelect.value;
+        if (!key) {
+            appendLog("프리셋을 선택하세요.", null);
+            return;
+        }
+        const preset = presetCache.get(key);
+        if (!preset) {
+            appendLog("프리셋 정보를 찾을 수 없습니다.", null);
+            return;
+        }
+        document.getElementById("alarm-condition-json").value = JSON.stringify(preset.conditions, null, 2);
+        appendLog("프리셋 적용 완료", preset);
+    });
+
+    const authFetch = async (url, method, payload) => {
+        const res = await fetch(url, {
+            method,
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${accessToken}`
+            },
+            body: payload ? JSON.stringify(payload) : null
+        });
+        const text = await res.text();
+        let body;
+        try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+        if (!res.ok) {
+            throw { status: res.status, body };
+        }
+        return body;
+    };
+
+    createAlarmBtn.addEventListener("click", async () => {
+        if (!accessToken) {
+            appendLog("먼저 시나리오를 실행해 로그인하세요.", null);
+            return;
+        }
+        try {
+            const conditions = parseJsonInput("alarm-condition-json", []);
+            const scheduleType = scheduleTypeSelect.value;
+            const runAtValue = runAtInput.value ? new Date(runAtInput.value).toISOString() : null;
+            if (scheduleType === "ONCE" && !runAtValue) {
+                appendLog("ONCE 알람은 실행 시각(runAt)이 필요합니다.", null);
+                return;
+            }
+            if (scheduleType === "RECURRING" && !cronInput.value.trim()) {
+                appendLog("RECURRING 알람은 CRON 표현식이 필요합니다.", null);
+                return;
+            }
+            const payload = {
+                name: document.getElementById("alarm-name").value,
+                description: "테스트 알람",
+                alarmType: "TIME",
+                scheduleType,
+                runAt: scheduleType === "ONCE" ? runAtValue : null,
+                cronExpression: scheduleType === "RECURRING" && !recurrenceTypeSelect.value ? cronInput.value : null,
+                timezone: "Asia/Seoul",
+                channel: channelSelect.value,
+                targetAddress: document.getElementById("alarm-target").value,
+                recurrenceType: recurrenceTypeSelect.value || null,
+                daysOfWeek: recurrenceTypeSelect.value === "WEEKLY" ? getSelectedWeekdays() : null,
+                dayOfMonth: (recurrenceTypeSelect.value === "MONTHLY" || recurrenceTypeSelect.value === "YEARLY")
+                    ? (dayOfMonthInput.value ? Number(dayOfMonthInput.value) : null)
+                    : null,
+                monthOfYear: recurrenceTypeSelect.value === "YEARLY"
+                    ? (monthOfYearInput.value ? Number(monthOfYearInput.value) : null)
+                    : null,
+                conditions
+            };
+            const created = await authFetch("/api/v1/alarms", "POST", payload);
+            alarmId = created.id;
+            alarmCache.set(created.id, created);
+            appendLog("알람 생성 완료", created);
+            updateAlarmBtn.disabled = false;
+            deleteAlarmBtn.disabled = false;
+            simulateAlarmBtn.disabled = false;
+            fetchLogsBtn.disabled = false;
+            runNowBtn.disabled = false;
+            alarmSelect.disabled = false;
+            applyAlarmBtn.disabled = false;
+            const option = document.createElement("option");
+            option.value = created.id;
+            option.textContent = `${created.id} - ${created.name}`;
+            alarmSelect.appendChild(option);
+        } catch (err) {
+            appendLog("알람 생성 실패", err);
+        }
+    });
+
+    updateAlarmBtn.addEventListener("click", async () => {
+        if (!alarmId) {
+            appendLog("먼저 알람을 생성하세요.", null);
+            return;
+        }
+        try {
+            const conditions = parseJsonInput("alarm-condition-json", []);
+            const scheduleType = scheduleTypeSelect.value;
+            const runAtValue = runAtInput.value ? new Date(runAtInput.value).toISOString() : null;
+            if (scheduleType === "ONCE" && !runAtValue) {
+                appendLog("ONCE 알람은 실행 시각(runAt)이 필요합니다.", null);
+                return;
+            }
+            const payload = {
+                name: document.getElementById("alarm-name").value + " (수정)",
+                description: "수정된 알람",
+                alarmType: "TIME",
+                scheduleType,
+                cronExpression: scheduleType === "RECURRING" && !recurrenceTypeSelect.value ? cronInput.value : null,
+                runAt: scheduleType === "ONCE" ? runAtValue : null,
+                timezone: "Asia/Seoul",
+                channel: channelSelect.value,
+                targetAddress: document.getElementById("alarm-target").value,
+                status: "ACTIVE",
+                recurrenceType: recurrenceTypeSelect.value || null,
+                daysOfWeek: recurrenceTypeSelect.value === "WEEKLY" ? getSelectedWeekdays() : null,
+                dayOfMonth: (recurrenceTypeSelect.value === "MONTHLY" || recurrenceTypeSelect.value === "YEARLY")
+                    ? (dayOfMonthInput.value ? Number(dayOfMonthInput.value) : null)
+                    : null,
+                monthOfYear: recurrenceTypeSelect.value === "YEARLY"
+                    ? (monthOfYearInput.value ? Number(monthOfYearInput.value) : null)
+                    : null,
+                conditions
+            };
+            const updated = await authFetch(`/api/v1/alarms/${alarmId}`, "PUT", payload);
+            appendLog("알람 수정 완료", updated);
+        } catch (err) {
+            appendLog("알람 수정 실패", err);
+        }
+    });
+
+    deleteAlarmBtn.addEventListener("click", async () => {
+        if (!alarmId) {
+            appendLog("삭제할 알람이 없습니다.", null);
+            return;
+        }
+        try {
+            await authFetch(`/api/v1/alarms/${alarmId}`, "DELETE");
+            appendLog("알람 삭제 완료", { alarmId });
+            alarmId = null;
+            updateAlarmBtn.disabled = true;
+            deleteAlarmBtn.disabled = true;
+            simulateAlarmBtn.disabled = true;
+            fetchLogsBtn.disabled = true;
+            runNowBtn.disabled = true;
+            alarmSelect.disabled = true;
+            applyAlarmBtn.disabled = true;
+            alarmSelect.innerHTML = '<option value="">알람을 선택하세요</option>';
+        } catch (err) {
+            appendLog("알람 삭제 실패", err);
+        }
+    });
+
+    simulateAlarmBtn.addEventListener("click", async () => {
+        if (!alarmId) {
+            appendLog("먼저 알람을 생성하세요.", null);
+            return;
+        }
+        try {
+            const payload = parseJsonInput("simulation-context", {});
+            const response = await authFetch(`/api/v1/alarms/${alarmId}/simulate`, "POST", {
+                weatherData: payload.weatherData,
+                stockData: payload.stockData,
+                customData: payload.customData,
+                sendNotification: payload.sendNotification ?? false
+            });
+            appendLog("알람 시뮬레이션 결과", response);
+        } catch (err) {
+            appendLog("알람 시뮬레이션 실패", err);
+        }
+    });
+
+    fetchLogsBtn.addEventListener("click", async () => {
+        if (!alarmId) {
+            appendLog("먼저 알람을 생성하세요.", null);
+            return;
+        }
+        try {
+            const logs = await authFetch(`/api/v1/alarms/${alarmId}/logs`, "GET");
+            appendLog("알람 실행 로그", logs);
+        } catch (err) {
+            appendLog("로그 조회 실패", err);
+        }
+    });
+
+    runNowBtn.addEventListener("click", async () => {
+        if (!alarmId) {
+            appendLog("먼저 알람을 선택하세요.", null);
+            return;
+        }
+        try {
+            await authFetch(`/api/v1/alarms/${alarmId}/run-now`, "POST");
+            appendLog("즉시 실행 요청 완료", { alarmId });
+        } catch (err) {
+            appendLog("즉시 실행 실패", err);
+        }
+    });
+
+    hourlyBtn.addEventListener("click", () => {
+        scheduleTypeSelect.value = "RECURRING";
+        cronInput.value = "0 0 * * * *";
+        appendLog("매시간 실행이 설정되었습니다.", null);
+    });
+
+    fetchAlarmsBtn.addEventListener("click", async () => {
+        if (!accessToken) {
+            appendLog("먼저 로그인하세요.", null);
+            return;
+        }
+        try {
+            const alarms = await authFetch("/api/v1/alarms", "GET");
+            appendLog("알람 목록", alarms);
+            alarmSelect.innerHTML = '<option value="">알람을 선택하세요</option>';
+            alarmCache.clear();
+            alarms.forEach((alarm) => {
+                alarmCache.set(alarm.id, alarm);
+                const option = document.createElement("option");
+                option.value = alarm.id;
+                option.textContent = `${alarm.id} - ${alarm.name}`;
+                alarmSelect.appendChild(option);
+            });
+            alarmSelect.disabled = false;
+            applyAlarmBtn.disabled = false;
+        } catch (err) {
+            appendLog("알람 목록 조회 실패", err);
+        }
+    });
+
+    applyAlarmBtn.addEventListener("click", () => {
+        const selected = alarmSelect.value;
+        if (!selected) {
+            appendLog("알람을 선택하세요.", null);
+            return;
+        }
+        const alarm = alarmCache.get(Number(selected));
+        if (!alarm) {
+            appendLog("알람 정보를 찾을 수 없습니다.", null);
+            return;
+        }
+        alarmId = alarm.id;
+        document.getElementById("alarm-name").value = alarm.name ?? "";
+        document.getElementById("alarm-target").value = alarm.targetAddress ?? "";
+        document.getElementById("alarm-condition-json").value = JSON.stringify(alarm.conditions ?? [], null, 2);
+        scheduleTypeSelect.value = alarm.scheduleType ?? "ONCE";
+        if (alarm.runAt) {
+            runAtInput.value = alarm.runAt.substring(0, 16);
+        }
+        cronInput.value = alarm.cronExpression ?? "";
+        recurrenceTypeSelect.value = alarm.recurrenceType ?? "";
+        setWeekdayChecks(alarm.daysOfWeek ?? []);
+        dayOfMonthInput.value = alarm.dayOfMonth ?? "";
+        monthOfYearInput.value = alarm.monthOfYear ?? "";
+        toggleScheduleInputs();
+        updateAlarmBtn.disabled = false;
+        deleteAlarmBtn.disabled = false;
+        simulateAlarmBtn.disabled = false;
+        fetchLogsBtn.disabled = false;
+        runNowBtn.disabled = false;
+        appendLog("알람 선택 완료", alarm);
+    });
+</script>
+</body>
+</html>

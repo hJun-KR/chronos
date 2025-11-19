@@ -3,15 +3,29 @@ spring:
     url: ${MYSQL_URL}
     username: ${MYSQL_USERNAME}
     password: ${MYSQL_PASSWORD}
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    driver-class-name: ${MYSQL_DRIVER:com.mysql.cj.jdbc.Driver}
 
   jpa:
     hibernate:
       ddl-auto: update
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQL8Dialect
+        dialect: ${JPA_HIBERNATE_DIALECT:org.hibernate.dialect.MySQL8Dialect}
     show-sql: true
+
+  mail:
+    host: ${MAILER_HOST:localhost}
+    port: ${MAILER_PORT:1025}
+    username: ${MAILER_USER:}
+    password: ${MAILER_PASS:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: false
+          ssl:
+            enable: true
 
 springdoc:
   api-docs:
@@ -21,3 +35,9 @@ springdoc:
 
 server:
   port: 8080
+
+jwt:
+  secret: ${JWT_SECRET}
+  issuer: chronos
+  access-token-validity: 900000 # 15 minutes
+  refresh-token-validity: 1209600000 # 14 days

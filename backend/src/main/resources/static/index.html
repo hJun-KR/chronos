@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Chronos Auth Tester</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; background: #f7f7f7; }
+        section { background: #fff; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
+        h2 { margin-top: 0; }
+        label { display: block; margin: 0.5rem 0 0.2rem; }
+        input, button { padding: 0.5rem; font-size: 1rem; }
+        button { margin-top: 0.5rem; cursor: pointer; }
+        pre { background: #212121; color: #f1f1f1; padding: 1rem; border-radius: 4px; min-height: 5rem; overflow: auto; }
+    </style>
+</head>
+<body>
+<h1>Chronos 인증 테스트 페이지</h1>
+<p>아래 폼으로 회원 가입, 로그인, 토큰 재발급, 이메일 인증을 직접 호출할 수 있습니다.</p>
+
+<section>
+    <h2>회원 가입</h2>
+    <form id="register-form">
+        <label>이메일</label>
+        <input type="email" name="email" required>
+        <label>비밀번호</label>
+        <input type="password" name="password" required minlength="8">
+        <label>이름</label>
+        <input type="text" name="name" required>
+        <button type="submit">가입 요청</button>
+    </form>
+</section>
+
+<section>
+    <h2>로그인</h2>
+    <form id="login-form">
+        <label>이메일</label>
+        <input type="email" name="email" required>
+        <label>비밀번호</label>
+        <input type="password" name="password" required>
+        <button type="submit">로그인</button>
+    </form>
+</section>
+
+<section>
+    <h2>리프레시 토큰</h2>
+    <form id="refresh-form">
+        <label>리프레시 토큰</label>
+        <input type="text" name="refreshToken" id="refresh-token-input" required>
+        <button type="submit">액세스 토큰 재발급</button>
+    </form>
+</section>
+
+<section>
+    <h2>이메일 인증</h2>
+    <form id="verification-send-form">
+        <label>이메일</label>
+        <input type="email" name="email" required>
+        <button type="submit">인증 코드 전송</button>
+    </form>
+    <form id="verification-verify-form" style="margin-top:1rem;">
+        <label>이메일</label>
+        <input type="email" name="email" required>
+        <label>인증 코드</label>
+        <input type="text" name="code" required minlength="6" maxlength="6">
+        <button type="submit">인증 코드 검증</button>
+    </form>
+</section>
+
+<section>
+    <h2>응답 로그</h2>
+    <pre id="log"></pre>
+</section>
+
+<script>
+    const logEl = document.getElementById('log');
+    let accessToken = '';
+    let refreshToken = '';
+
+    function log(message, data) {
+        const time = new Date().toLocaleTimeString();
+        logEl.textContent = `[${time}] ${message}\n${data ? JSON.stringify(data, null, 2) : ''}\n\n` + logEl.textContent;
+    }
+
+    async function submitJson(url, payload) {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const text = await response.text();
+        let data;
+        try { data = text ? JSON.parse(text) : null; } catch (e) { data = text; }
+        if (!response.ok) throw { status: response.status, data };
+        return data;
+    }
+
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = Object.fromEntries(new FormData(e.target).entries());
+        try {
+            const data = await submitJson('/api/v1/auth/register', payload);
+            log('회원 가입 성공 (이메일 인증 필요)', data);
+        } catch (err) {
+            log('회원 가입 실패', err);
+        }
+    });
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = Object.fromEntries(new FormData(e.target).entries());
+        try {
+            const data = await submitJson('/api/v1/auth/login', payload);
+            accessToken = data.token.accessToken;
+            refreshToken = data.token.refreshToken;
+            document.getElementById('refresh-token-input').value = refreshToken;
+            log('로그인 성공', data);
+        } catch (err) {
+            log('로그인 실패', err);
+        }
+    });
+
+    document.getElementById('refresh-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = Object.fromEntries(new FormData(e.target).entries());
+        try {
+            const data = await submitJson('/api/v1/auth/refresh', payload);
+            accessToken = data.accessToken;
+            refreshToken = data.refreshToken;
+            document.getElementById('refresh-token-input').value = refreshToken;
+            log('토큰 재발급 성공', data);
+        } catch (err) {
+            log('토큰 재발급 실패', err);
+        }
+    });
+
+    document.getElementById('verification-send-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = Object.fromEntries(new FormData(e.target).entries());
+        try {
+            await submitJson('/api/v1/email-verifications/send', payload);
+            log('인증 메일 발송 완료', payload);
+        } catch (err) {
+            log('인증 메일 발송 실패', err);
+        }
+    });
+
+    document.getElementById('verification-verify-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = Object.fromEntries(new FormData(e.target).entries());
+        try {
+            await submitJson('/api/v1/email-verifications/verify', payload);
+            log('인증 코드 확인 완료', payload);
+        } catch (err) {
+            log('인증 코드 확인 실패', err);
+        }
+    });
+</script>
+</body>
+</html>
