@@ -1,6 +1,8 @@
 package kr.hjun.backend.service;
 
 import jakarta.annotation.PostConstruct;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import kr.hjun.backend.dto.AlarmConditionRequest;
 import kr.hjun.backend.dto.ConditionPresetResponse;
 import kr.hjun.backend.entity.AlarmCondition;
@@ -18,6 +20,7 @@ import java.util.Map;
 public class ConditionPresetServiceImpl implements ConditionPresetService {
 
     private final List<ConditionPresetResponse> presets = new ArrayList<>();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @PostConstruct
     void init() {
@@ -45,9 +48,7 @@ public class ConditionPresetServiceImpl implements ConditionPresetService {
         condition.setOperator(AlarmCondition.Operator.LT);
         condition.setFieldKey("T1H");
         condition.setFieldValue("5");
-        condition.setExtraJson(Map.of(
-                "base_time", "0600"
-        ));
+        condition.setExtraJson(toJson(Map.of("base_time", "0600")));
         return new ConditionPresetResponse(
                 "seoul-morning-cold",
                 "서울 아침 기온 5℃ 이하",
@@ -62,9 +63,7 @@ public class ConditionPresetServiceImpl implements ConditionPresetService {
         condition.setOperator(AlarmCondition.Operator.LTE);
         condition.setFieldKey("price");
         condition.setFieldValue("65000");
-        condition.setExtraJson(Map.of(
-                "symbol", "005930.KS"
-        ));
+        condition.setExtraJson(toJson(Map.of("symbol", "005930.KS")));
         return new ConditionPresetResponse(
                 "kospi-samsung-buy",
                 "삼성전자 6만5천원 이하",
@@ -79,14 +78,20 @@ public class ConditionPresetServiceImpl implements ConditionPresetService {
         condition.setOperator(AlarmCondition.Operator.BETWEEN);
         condition.setFieldKey("hour");
         condition.setFieldValue("09:00,18:00");
-        condition.setExtraJson(Map.of(
-                "value", "10:00"
-        ));
+        condition.setExtraJson(toJson(Map.of("value", "10:00")));
         return new ConditionPresetResponse(
                 "working-hours",
                 "업무 시간대 9시~18시",
                 "현재 시간이 9~18시 사이일 때 실행",
                 List.of(condition)
         );
+    }
+
+    private String toJson(Map<String, Object> map) {
+        try {
+            return objectMapper.writeValueAsString(map);
+        } catch (JsonProcessingException e) {
+            throw new ChronosException(HttpStatus.INTERNAL_SERVER_ERROR, "프리셋 변환 실패");
+        }
     }
 }
