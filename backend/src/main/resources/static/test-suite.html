@@ -62,7 +62,28 @@
         <label>실행 시각(runAt)</label>
         <input type="datetime-local" id="run-at"/>
         <label>CRON 표현식</label>
-        <input type="text" id="cron-expression" value="0 0 * * * *"/>
+        <input type="text" id="cron-expression" placeholder="예: 0 0 * * * *"/>
+        <label>반복 유형</label>
+        <select id="recurrence-type">
+            <option value="">직접 CRON 사용</option>
+            <option value="DAILY">매일</option>
+            <option value="WEEKLY">요일 지정</option>
+            <option value="MONTHLY">매월</option>
+            <option value="YEARLY">매년</option>
+        </select>
+        <div id="weekday-group" style="margin:0.5rem 0;">
+            <label><input type="checkbox" class="weekday-chk" value="MONDAY">월</label>
+            <label><input type="checkbox" class="weekday-chk" value="TUESDAY">화</label>
+            <label><input type="checkbox" class="weekday-chk" value="WEDNESDAY">수</label>
+            <label><input type="checkbox" class="weekday-chk" value="THURSDAY">목</label>
+            <label><input type="checkbox" class="weekday-chk" value="FRIDAY">금</label>
+            <label><input type="checkbox" class="weekday-chk" value="SATURDAY">토</label>
+            <label><input type="checkbox" class="weekday-chk" value="SUNDAY">일</label>
+        </div>
+        <label>일자 (매월/매년)</label>
+        <input type="number" id="day-of-month" min="1" max="31" placeholder="예: 15"/>
+        <label>월 (매년)</label>
+        <input type="number" id="month-of-year" min="1" max="12" placeholder="예: 5"/>
         <button id="hourly-btn" disabled>매시간 실행 설정</button>
         <button id="create-alarm" disabled>알람 생성</button>
         <button id="update-alarm" disabled>알람 수정</button>
@@ -144,8 +165,12 @@
     const presetCache = new Map();
     const alarmCache = new Map();
     const scheduleTypeSelect = document.getElementById("schedule-type");
+    const recurrenceTypeSelect = document.getElementById("recurrence-type");
+    const weekdayChecks = document.querySelectorAll(".weekday-chk");
     const runAtInput = document.getElementById("run-at");
     const cronInput = document.getElementById("cron-expression");
+    const dayOfMonthInput = document.getElementById("day-of-month");
+    const monthOfYearInput = document.getElementById("month-of-year");
     const hourlyBtn = document.getElementById("hourly-btn");
     const createAlarmBtn = document.getElementById("create-alarm");
     const updateAlarmBtn = document.getElementById("update-alarm");
@@ -164,16 +189,36 @@
 
     runAtInput.value = new Date(Date.now() + 3600000).toISOString().slice(0, 16);
 
+    const applyRecurrenceOptions = () => {
+        const type = recurrenceTypeSelect.value;
+        if (!type) {
+            weekdayChecks.forEach(chk => chk.disabled = true);
+            dayOfMonthInput.disabled = true;
+            monthOfYearInput.disabled = true;
+            return;
+        }
+        weekdayChecks.forEach(chk => chk.disabled = type !== "WEEKLY");
+        dayOfMonthInput.disabled = !(type === "MONTHLY" || type === "YEARLY");
+        monthOfYearInput.disabled = type !== "YEARLY";
+    };
+
     const toggleScheduleInputs = () => {
         if (scheduleTypeSelect.value === "ONCE") {
             runAtInput.disabled = false;
             cronInput.disabled = true;
+            recurrenceTypeSelect.disabled = true;
+            weekdayChecks.forEach(chk => chk.disabled = true);
+            dayOfMonthInput.disabled = true;
+            monthOfYearInput.disabled = true;
         } else {
             runAtInput.disabled = true;
             cronInput.disabled = false;
+            recurrenceTypeSelect.disabled = false;
+            applyRecurrenceOptions();
         }
     };
     scheduleTypeSelect.addEventListener("change", toggleScheduleInputs);
+    recurrenceTypeSelect.addEventListener("change", applyRecurrenceOptions);
     toggleScheduleInputs();
 
     let currentEmail = "";

@@ -35,12 +35,14 @@ public class AlarmScheduler {
             return;
         }
         cancel(alarm.getId());
-        Runnable task = () -> {
-            alarmExecutionService.execute(alarm);
-            alarmRepository.findById(alarm.getId()).ifPresent(this::schedule);
-        };
+        Runnable task = () -> alarmRepository.findById(alarm.getId()).ifPresent(latest -> {
+            alarmExecutionService.execute(latest);
+            alarmRepository.findById(latest.getId()).ifPresent(this::schedule);
+        });
         scheduledTasks.put(alarm.getId(), task);
-        taskScheduler.schedule(task, Instant.from(alarm.getNextRunAt().atZone(ZoneId.systemDefault())));
+        ZoneId zoneId = alarm.getTimezone() != null ? ZoneId.of(alarm.getTimezone()) : ZoneId.systemDefault();
+        Instant trigger = alarm.getNextRunAt().atZone(zoneId).toInstant();
+        taskScheduler.schedule(task, trigger);
         log.info("알람 스케줄링: {} - {}", alarm.getId(), alarm.getNextRunAt());
     }
 

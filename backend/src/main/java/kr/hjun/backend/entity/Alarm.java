@@ -60,6 +60,19 @@ public class Alarm extends BaseEntity {
     @Column(name = "status", nullable = false, length = 20)
     private AlarmStatus status = AlarmStatus.ACTIVE;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "recurrence_type", length = 20)
+    private RecurrenceType recurrenceType;
+
+    @Column(name = "recurrence_days", length = 100)
+    private String recurrenceDays;
+
+    @Column(name = "recurrence_day_of_month")
+    private Integer recurrenceDayOfMonth;
+
+    @Column(name = "recurrence_month_of_year")
+    private Integer recurrenceMonthOfYear;
+
     @Column(name = "last_run_at")
     private LocalDateTime lastRunAt;
 
@@ -102,5 +115,9 @@ public class Alarm extends BaseEntity {
 
     public enum AlarmStatus {
         ACTIVE, PAUSED
+    }
+
+    public enum RecurrenceType {
+        DAILY, WEEKLY, MONTHLY, YEARLY
     }
 }

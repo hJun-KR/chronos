@@ -8,9 +8,11 @@ import kr.hjun.backend.entity.Alarm;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -46,4 +48,9 @@ public class AlarmUpdateRequest {
 
     @NotNull(message = "상태는 필수입니다.")
     private Alarm.AlarmStatus status;
+
+    private Alarm.RecurrenceType recurrenceType;
+    private Set<DayOfWeek> daysOfWeek;
+    private Integer dayOfMonth;
+    private Integer monthOfYear;
 }

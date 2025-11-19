@@ -8,9 +8,11 @@ import kr.hjun.backend.entity.Alarm;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -43,4 +45,9 @@ public class AlarmCreateRequest {
     @Valid
     @NotEmpty(message = "최소 한 개의 조건이 필요합니다.")
     private List<AlarmConditionRequest> conditions = new ArrayList<>();
+
+    private Alarm.RecurrenceType recurrenceType;
+    private Set<DayOfWeek> daysOfWeek;
+    private Integer dayOfMonth;
+    private Integer monthOfYear;
 }

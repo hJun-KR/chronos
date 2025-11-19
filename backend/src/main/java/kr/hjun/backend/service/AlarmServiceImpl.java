@@ -15,7 +15,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
+import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,13 +44,18 @@ public class AlarmServiceImpl implements AlarmService {
                 .description(request.getDescription())
                 .alarmType(request.getAlarmType())
                 .scheduleType(request.getScheduleType())
-                .cronExpression(request.getCronExpression())
-                .runAt(request.getRunAt())
                 .timezone(request.getTimezone())
                 .channel(request.getChannel())
                 .targetAddress(request.getTargetAddress())
                 .build();
 
+        applyScheduleSettings(alarm,
+                request.getRunAt(),
+                request.getCronExpression(),
+                request.getRecurrenceType(),
+                request.getDaysOfWeek(),
+                request.getDayOfMonth(),
+                request.getMonthOfYear());
         setConditions(alarm, request.getConditions());
         alarmSchedulingService.updateNextRun(alarm);
         Alarm saved = alarmRepository.save(alarm);
@@ -63,12 +72,17 @@ public class AlarmServiceImpl implements AlarmService {
         alarm.setDescription(request.getDescription());
         alarm.setAlarmType(request.getAlarmType());
         alarm.setScheduleType(request.getScheduleType());
-        alarm.setCronExpression(request.getCronExpression());
-        alarm.setRunAt(request.getRunAt());
         alarm.setTimezone(request.getTimezone());
         alarm.setChannel(request.getChannel());
         alarm.setTargetAddress(request.getTargetAddress());
         alarm.setStatus(request.getStatus());
+        applyScheduleSettings(alarm,
+                request.getRunAt(),
+                request.getCronExpression(),
+                request.getRecurrenceType(),
+                request.getDaysOfWeek(),
+                request.getDayOfMonth(),
+                request.getMonthOfYear());
         alarm.clearConditions();
         setConditions(alarm, request.getConditions());
         alarmSchedulingService.updateNextRun(alarm);
@@ -122,5 +136,93 @@ public class AlarmServiceImpl implements AlarmService {
     private Alarm getOwnedAlarm(Long userId, Long alarmId) {
         return alarmRepository.findByIdAndUserId(alarmId, userId)
                 .orElseThrow(() -> new ChronosException(HttpStatus.NOT_FOUND, "알람을 찾을 수 없습니다."));
+    }
+
+    private void applyScheduleSettings(Alarm alarm,
+                                       LocalDateTime runAt,
+                                       String cronExpression,
+                                       Alarm.RecurrenceType recurrenceType,
+                                       Set<DayOfWeek> daysOfWeek,
+                                       Integer dayOfMonth,
+                                       Integer monthOfYear) {
+        alarm.setRunAt(runAt);
+        alarm.setRecurrenceType(recurrenceType);
+        alarm.setRecurrenceDays(formatDays(daysOfWeek));
+        alarm.setRecurrenceDayOfMonth(dayOfMonth);
+        alarm.setRecurrenceMonthOfYear(monthOfYear);
+        alarm.setCronExpression(resolveCronExpression(alarm, cronExpression, runAt));
+    }
+
+    private String formatDays(Collection<DayOfWeek> days) {
+        if (days == null || days.isEmpty()) {
+            return null;
+        }
+        return days.stream()
+                .map(DayOfWeek::name)
+                .collect(Collectors.joining(","));
+    }
+
+    private String resolveCronExpression(Alarm alarm, String cronExpression, LocalDateTime runAt) {
+        if (alarm.getScheduleType() == Alarm.ScheduleType.ONCE) {
+            if (runAt == null) {
+                throw new ChronosException(HttpStatus.BAD_REQUEST, "단발성 알람은 실행 시각(runAt)이 필요합니다.");
+            }
+            return null;
+        }
+
+        if (cronExpression != null && !cronExpression.isBlank()) {
+            return cronExpression.trim();
+        }
+
+        if (runAt == null) {
+            throw new ChronosException(HttpStatus.BAD_REQUEST, "반복 알람은 실행 시각(runAt) 혹은 cronExpression이 필요합니다.");
+        }
+
+        Alarm.RecurrenceType recurrenceType = alarm.getRecurrenceType();
+        if (recurrenceType == null) {
+            throw new ChronosException(HttpStatus.BAD_REQUEST, "반복 유형을 지정하거나 cronExpression을 입력해야 합니다.");
+        }
+
+        String minute = String.valueOf(runAt.getMinute());
+        String hour = String.valueOf(runAt.getHour());
+
+        return switch (recurrenceType) {
+            case DAILY -> "0 " + minute + " " + hour + " * * ?";
+            case WEEKLY -> buildWeeklyCron(alarm, hour, minute);
+            case MONTHLY -> buildMonthlyCron(alarm, hour, minute);
+            case YEARLY -> buildYearlyCron(alarm, hour, minute);
+        };
+    }
+
+    private String buildWeeklyCron(Alarm alarm, String hour, String minute) {
+        String days = alarm.getRecurrenceDays();
+        if (days == null || days.isBlank()) {
+            throw new ChronosException(HttpStatus.BAD_REQUEST, "요일을 최소 한 개 이상 선택해야 합니다.");
+        }
+        String cronDays = java.util.Arrays.stream(days.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(String::toUpperCase)
+                .map(DayOfWeek::valueOf)
+                .map(day -> day.name().substring(0, 3))
+                .collect(Collectors.joining(","));
+        return "0 " + minute + " " + hour + " ? * " + cronDays;
+    }
+
+    private String buildMonthlyCron(Alarm alarm, String hour, String minute) {
+        Integer day = alarm.getRecurrenceDayOfMonth();
+        if (day == null || day < 1 || day > 31) {
+            throw new ChronosException(HttpStatus.BAD_REQUEST, "월 반복 시 일(dayOfMonth)을 지정해야 합니다.");
+        }
+        return "0 " + minute + " " + hour + " " + day + " * ?";
+    }
+
+    private String buildYearlyCron(Alarm alarm, String hour, String minute) {
+        Integer day = alarm.getRecurrenceDayOfMonth();
+        Integer month = alarm.getRecurrenceMonthOfYear();
+        if (day == null || month == null || day < 1 || day > 31 || month < 1 || month > 12) {
+            throw new ChronosException(HttpStatus.BAD_REQUEST, "연간 반복 시 월/일을 모두 지정해야 합니다.");
+        }
+        return "0 " + minute + " " + hour + " " + day + " " + month + " ?";
     }
 }

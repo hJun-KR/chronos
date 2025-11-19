@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 @Component
 @RequiredArgsConstructor
@@ -35,8 +36,8 @@ public class AlarmSchedulingServiceImpl implements AlarmSchedulingService {
 
         try {
             CronExpression cronExpression = CronExpression.parse(cron);
-            LocalDateTime next = cronExpression.next(LocalDateTime.now(zoneId));
-            alarm.setNextRunAt(next);
+            ZonedDateTime next = cronExpression.next(ZonedDateTime.now(zoneId));
+            alarm.setNextRunAt(next != null ? next.toLocalDateTime() : null);
         } catch (IllegalArgumentException e) {
             throw new ChronosException(HttpStatus.BAD_REQUEST, "유효하지 않은 CRON 표현식입니다.");
         }
