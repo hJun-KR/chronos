@@ -50,6 +50,7 @@ class AlarmExecutionServiceImplTest {
     @DisplayName("알람 실행 성공")
     void executeSuccess() {
         Alarm alarm = sampleAlarm();
+        when(alarmRepository.findById(alarm.getId())).thenReturn(java.util.Optional.of(alarm));
         when(conditionEvaluationService.evaluate(eq(alarm.getConditions()), any())).thenReturn(true);
         when(conditionContextProvider.buildContext(alarm)).thenReturn(ConditionContext.empty());
 
@@ -65,6 +66,7 @@ class AlarmExecutionServiceImplTest {
     @DisplayName("알람 실행 - 조건 미충족")
     void executeSkip() {
         Alarm alarm = sampleAlarm();
+        when(alarmRepository.findById(alarm.getId())).thenReturn(java.util.Optional.of(alarm));
         when(conditionEvaluationService.evaluate(eq(alarm.getConditions()), any())).thenReturn(false);
         when(conditionContextProvider.buildContext(alarm)).thenReturn(ConditionContext.empty());
 

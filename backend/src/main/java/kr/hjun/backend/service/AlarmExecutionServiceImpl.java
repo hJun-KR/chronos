@@ -3,10 +3,12 @@ package kr.hjun.backend.service;
 import kr.hjun.backend.dto.AlarmSimulationResponse;
 import kr.hjun.backend.entity.Alarm;
 import kr.hjun.backend.entity.AlarmExecutionLog;
+import kr.hjun.backend.exception.ChronosException;
 import kr.hjun.backend.repository.AlarmRepository;
 import kr.hjun.backend.repository.AlarmExecutionLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,21 +30,23 @@ public class AlarmExecutionServiceImpl implements AlarmExecutionService {
     @Override
     @Transactional
     public void execute(Alarm alarm) {
-        ConditionContext context = conditionContextProvider.buildContext(alarm);
-        boolean shouldRun = conditionEvaluationService.evaluate(alarm.getConditions(), context);
+        Alarm managed = alarmRepository.findById(alarm.getId())
+                .orElseThrow(() -> new ChronosException(HttpStatus.NOT_FOUND, "알람을 찾을 수 없습니다."));
+        ConditionContext context = conditionContextProvider.buildContext(managed);
+        boolean shouldRun = conditionEvaluationService.evaluate(managed.getConditions(), context);
         if (!shouldRun) {
-            log.info("조건이 충족되지 않아 알람 실행을 건너뜀: {}", alarm.getId());
-            updateScheduling(alarm, "SKIPPED");
+            log.info("조건이 충족되지 않아 알람 실행을 건너뜀: {}", managed.getId());
+            updateScheduling(managed);
             return;
         }
 
         try {
-            notificationService.send(alarm, buildPayload(alarm));
-            recordLog(alarm, true, "SUCCESS", null);
+            notificationService.send(managed, buildPayload(managed));
+            recordLog(managed, true, "SUCCESS", null);
         } catch (Exception e) {
-            recordLog(alarm, false, "FAILED", e.getMessage());
+            recordLog(managed, false, "FAILED", e.getMessage());
         } finally {
-            updateScheduling(alarm, alarm.getLastResult());
+            updateScheduling(managed);
         }
     }
 
@@ -76,7 +80,7 @@ public class AlarmExecutionServiceImpl implements AlarmExecutionService {
         alarm.setLastResult(message);
     }
 
-    private void updateScheduling(Alarm alarm, String result) {
+    private void updateScheduling(Alarm alarm) {
         alarmSchedulingService.updateNextRun(alarm);
         alarmRepository.save(alarm);
     }

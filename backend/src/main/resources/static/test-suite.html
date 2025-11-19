@@ -189,17 +189,38 @@
 
     runAtInput.value = new Date(Date.now() + 3600000).toISOString().slice(0, 16);
 
+    const getSelectedWeekdays = () => Array.from(weekdayChecks)
+        .filter(chk => chk.checked)
+        .map(chk => chk.value);
+
+    const setWeekdayChecks = (values = []) => {
+        const set = new Set(values);
+        weekdayChecks.forEach(chk => {
+            chk.checked = set.has(chk.value);
+        });
+    };
+
     const applyRecurrenceOptions = () => {
         const type = recurrenceTypeSelect.value;
         if (!type) {
-            weekdayChecks.forEach(chk => chk.disabled = true);
+            weekdayChecks.forEach(chk => {
+                chk.disabled = true;
+                chk.checked = false;
+            });
             dayOfMonthInput.disabled = true;
+            dayOfMonthInput.value = "";
             monthOfYearInput.disabled = true;
+            monthOfYearInput.value = "";
             return;
         }
         weekdayChecks.forEach(chk => chk.disabled = type !== "WEEKLY");
+        if (type !== "WEEKLY") {
+            weekdayChecks.forEach(chk => chk.checked = false);
+        }
         dayOfMonthInput.disabled = !(type === "MONTHLY" || type === "YEARLY");
+        if (dayOfMonthInput.disabled) dayOfMonthInput.value = "";
         monthOfYearInput.disabled = type !== "YEARLY";
+        if (monthOfYearInput.disabled) monthOfYearInput.value = "";
     };
 
     const toggleScheduleInputs = () => {
@@ -405,10 +426,18 @@
                 alarmType: "TIME",
                 scheduleType,
                 runAt: scheduleType === "ONCE" ? runAtValue : null,
-                cronExpression: scheduleType === "RECURRING" ? cronInput.value : null,
+                cronExpression: scheduleType === "RECURRING" && !recurrenceTypeSelect.value ? cronInput.value : null,
                 timezone: "Asia/Seoul",
                 channel: "EMAIL",
                 targetAddress: document.getElementById("alarm-target").value,
+                recurrenceType: recurrenceTypeSelect.value || null,
+                daysOfWeek: recurrenceTypeSelect.value === "WEEKLY" ? getSelectedWeekdays() : null,
+                dayOfMonth: (recurrenceTypeSelect.value === "MONTHLY" || recurrenceTypeSelect.value === "YEARLY")
+                    ? (dayOfMonthInput.value ? Number(dayOfMonthInput.value) : null)
+                    : null,
+                monthOfYear: recurrenceTypeSelect.value === "YEARLY"
+                    ? (monthOfYearInput.value ? Number(monthOfYearInput.value) : null)
+                    : null,
                 conditions
             };
             const created = await authFetch("/api/v1/alarms", "POST", payload);
@@ -449,12 +478,20 @@
                 description: "수정된 알람",
                 alarmType: "TIME",
                 scheduleType,
-                cronExpression: scheduleType === "RECURRING" ? cronInput.value : null,
+                cronExpression: scheduleType === "RECURRING" && !recurrenceTypeSelect.value ? cronInput.value : null,
                 runAt: scheduleType === "ONCE" ? runAtValue : null,
                 timezone: "Asia/Seoul",
                 channel: "EMAIL",
                 targetAddress: document.getElementById("alarm-target").value,
                 status: "ACTIVE",
+                recurrenceType: recurrenceTypeSelect.value || null,
+                daysOfWeek: recurrenceTypeSelect.value === "WEEKLY" ? getSelectedWeekdays() : null,
+                dayOfMonth: (recurrenceTypeSelect.value === "MONTHLY" || recurrenceTypeSelect.value === "YEARLY")
+                    ? (dayOfMonthInput.value ? Number(dayOfMonthInput.value) : null)
+                    : null,
+                monthOfYear: recurrenceTypeSelect.value === "YEARLY"
+                    ? (monthOfYearInput.value ? Number(monthOfYearInput.value) : null)
+                    : null,
                 conditions
             };
             const updated = await authFetch(`/api/v1/alarms/${alarmId}`, "PUT", payload);
@@ -580,7 +617,11 @@
         if (alarm.runAt) {
             runAtInput.value = alarm.runAt.substring(0, 16);
         }
-        cronInput.value = alarm.cronExpression ?? cronInput.value;
+        cronInput.value = alarm.cronExpression ?? "";
+        recurrenceTypeSelect.value = alarm.recurrenceType ?? "";
+        setWeekdayChecks(alarm.daysOfWeek ?? []);
+        dayOfMonthInput.value = alarm.dayOfMonth ?? "";
+        monthOfYearInput.value = alarm.monthOfYear ?? "";
         toggleScheduleInputs();
         updateAlarmBtn.disabled = false;
         deleteAlarmBtn.disabled = false;
