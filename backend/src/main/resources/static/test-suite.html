@@ -53,7 +53,12 @@
         <label>알람 이름</label>
         <input type="text" id="alarm-name" value="테스트 알람"/>
         <label>타겟</label>
-        <input type="text" id="alarm-target" value="alarm@example.com"/>
+        <input type="text" id="alarm-target" value="alarm@example.com" placeholder="이메일 또는 Discord Webhook URL"/>
+        <label>채널</label>
+        <select id="channel-select">
+            <option value="EMAIL">EMAIL</option>
+            <option value="DISCORD">DISCORD</option>
+        </select>
         <label>스케줄 유형</label>
         <select id="schedule-type">
             <option value="ONCE">ONCE</option>
@@ -165,6 +170,7 @@
     const presetCache = new Map();
     const alarmCache = new Map();
     const scheduleTypeSelect = document.getElementById("schedule-type");
+    const channelSelect = document.getElementById("channel-select");
     const recurrenceTypeSelect = document.getElementById("recurrence-type");
     const weekdayChecks = document.querySelectorAll(".weekday-chk");
     const runAtInput = document.getElementById("run-at");
@@ -428,7 +434,7 @@
                 runAt: scheduleType === "ONCE" ? runAtValue : null,
                 cronExpression: scheduleType === "RECURRING" && !recurrenceTypeSelect.value ? cronInput.value : null,
                 timezone: "Asia/Seoul",
-                channel: "EMAIL",
+                channel: channelSelect.value,
                 targetAddress: document.getElementById("alarm-target").value,
                 recurrenceType: recurrenceTypeSelect.value || null,
                 daysOfWeek: recurrenceTypeSelect.value === "WEEKLY" ? getSelectedWeekdays() : null,
@@ -481,7 +487,7 @@
                 cronExpression: scheduleType === "RECURRING" && !recurrenceTypeSelect.value ? cronInput.value : null,
                 runAt: scheduleType === "ONCE" ? runAtValue : null,
                 timezone: "Asia/Seoul",
-                channel: "EMAIL",
+                channel: channelSelect.value,
                 targetAddress: document.getElementById("alarm-target").value,
                 status: "ACTIVE",
                 recurrenceType: recurrenceTypeSelect.value || null,
