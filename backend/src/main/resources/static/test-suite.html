@@ -61,6 +61,12 @@
         <button id="delete-alarm" disabled>알람 삭제</button>
     </div>
     <label>조건 리스트(JSON 배열)</label>
+    <div style="margin-bottom:0.5rem;">
+        <select id="preset-select" disabled>
+            <option value="">프리셋을 선택하세요</option>
+        </select>
+        <button id="apply-preset" disabled>프리셋 적용</button>
+    </div>
     <textarea id="alarm-condition-json" placeholder='[
   {
     "conditionType": "WEATHER",
@@ -112,6 +118,9 @@
     const registerButton = document.getElementById("register-and-send");
     const runScenarioButton = document.getElementById("run-scenario");
     const clearLogButton = document.getElementById("clear-log");
+    const presetSelect = document.getElementById("preset-select");
+    const applyPresetBtn = document.getElementById("apply-preset");
+    const presetCache = new Map();
 
     clearLogButton.addEventListener("click", () => {
         logEl.textContent = "";
@@ -120,6 +129,29 @@
     let currentEmail = "";
     let accessToken = "";
     let alarmId = null;
+
+    const loadPresets = async () => {
+        try {
+            const res = await fetch("/api/v1/condition-presets");
+            if (!res.ok) {
+                throw new Error(`status ${res.status}`);
+            }
+            const presets = await res.json();
+            presetSelect.innerHTML = '<option value="">프리셋을 선택하세요</option>';
+            presets.forEach((preset) => {
+                presetCache.set(preset.key, preset);
+                const option = document.createElement("option");
+                option.value = preset.key;
+                option.textContent = preset.name;
+                presetSelect.appendChild(option);
+            });
+            presetSelect.disabled = false;
+            applyPresetBtn.disabled = false;
+        } catch (err) {
+            appendLog("프리셋 로드 실패", err);
+        }
+    };
+    loadPresets();
 
     registerButton.addEventListener("click", async () => {
         const email = document.getElementById("test-email").value;
@@ -214,6 +246,21 @@
             throw e;
         }
     };
+
+    applyPresetBtn.addEventListener("click", () => {
+        const key = presetSelect.value;
+        if (!key) {
+            appendLog("프리셋을 선택하세요.", null);
+            return;
+        }
+        const preset = presetCache.get(key);
+        if (!preset) {
+            appendLog("프리셋 정보를 찾을 수 없습니다.", null);
+            return;
+        }
+        document.getElementById("alarm-condition-json").value = JSON.stringify(preset.conditions, null, 2);
+        appendLog("프리셋 적용 완료", preset);
+    });
 
     const authFetch = async (url, method, payload) => {
         const res = await fetch(url, {
