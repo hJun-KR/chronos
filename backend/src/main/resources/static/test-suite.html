@@ -56,9 +56,17 @@
         <input type="text" id="alarm-target" value="alarm@example.com"/>
         <button id="create-alarm" disabled>알람 생성</button>
         <button id="update-alarm" disabled>알람 수정</button>
+        <button id="fetch-alarms" disabled>알람 목록 조회</button>
         <button id="simulate-alarm" disabled>알람 시뮬레이션</button>
         <button id="fetch-logs" disabled>실행 로그 조회</button>
         <button id="delete-alarm" disabled>알람 삭제</button>
+    </div>
+    <div style="margin:0.5rem 0;">
+        <label>알람 선택</label>
+        <select id="alarm-select" disabled>
+            <option value="">알람을 선택하세요</option>
+        </select>
+        <button id="apply-alarm" disabled>선택 알람 적용</button>
     </div>
     <label>조건 리스트(JSON 배열)</label>
     <div style="margin-bottom:0.5rem;">
@@ -120,7 +128,10 @@
     const clearLogButton = document.getElementById("clear-log");
     const presetSelect = document.getElementById("preset-select");
     const applyPresetBtn = document.getElementById("apply-preset");
+    const alarmSelect = document.getElementById("alarm-select");
+    const applyAlarmBtn = document.getElementById("apply-alarm");
     const presetCache = new Map();
+    const alarmCache = new Map();
 
     clearLogButton.addEventListener("click", () => {
         logEl.textContent = "";
@@ -229,6 +240,11 @@
             document.getElementById("create-alarm").disabled = false;
             document.getElementById("update-alarm").disabled = true;
             document.getElementById("delete-alarm").disabled = true;
+            document.getElementById("fetch-alarms").disabled = false;
+            document.getElementById("simulate-alarm").disabled = true;
+            document.getElementById("fetch-logs").disabled = true;
+            alarmSelect.disabled = true;
+            applyAlarmBtn.disabled = true;
         } catch (err) {
             appendLog("시나리오 실행 실패", err);
         }
@@ -300,11 +316,18 @@
             };
             const created = await authFetch("/api/v1/alarms", "POST", payload);
             alarmId = created.id;
+            alarmCache.set(created.id, created);
             appendLog("알람 생성 완료", created);
             document.getElementById("update-alarm").disabled = false;
             document.getElementById("delete-alarm").disabled = false;
             document.getElementById("simulate-alarm").disabled = false;
             document.getElementById("fetch-logs").disabled = false;
+            alarmSelect.disabled = false;
+            applyAlarmBtn.disabled = false;
+            const option = document.createElement("option");
+            option.value = created.id;
+            option.textContent = `${created.id} - ${created.name}`;
+            alarmSelect.appendChild(option);
         } catch (err) {
             appendLog("알람 생성 실패", err);
         }
@@ -350,6 +373,9 @@
             document.getElementById("delete-alarm").disabled = true;
             document.getElementById("simulate-alarm").disabled = true;
             document.getElementById("fetch-logs").disabled = true;
+            alarmSelect.disabled = true;
+            applyAlarmBtn.disabled = true;
+            alarmSelect.innerHTML = '<option value="">알람을 선택하세요</option>';
         } catch (err) {
             appendLog("알람 삭제 실패", err);
         }
@@ -385,6 +411,52 @@
         } catch (err) {
             appendLog("로그 조회 실패", err);
         }
+    });
+
+    document.getElementById("fetch-alarms").addEventListener("click", async () => {
+        if (!accessToken) {
+            appendLog("먼저 로그인하세요.", null);
+            return;
+        }
+        try {
+            const alarms = await authFetch("/api/v1/alarms", "GET");
+            appendLog("알람 목록", alarms);
+            alarmSelect.innerHTML = '<option value="">알람을 선택하세요</option>';
+            alarmCache.clear();
+            alarms.forEach((alarm) => {
+                alarmCache.set(alarm.id, alarm);
+                const option = document.createElement("option");
+                option.value = alarm.id;
+                option.textContent = `${alarm.id} - ${alarm.name}`;
+                alarmSelect.appendChild(option);
+            });
+            alarmSelect.disabled = false;
+            applyAlarmBtn.disabled = false;
+        } catch (err) {
+            appendLog("알람 목록 조회 실패", err);
+        }
+    });
+
+    applyAlarmBtn.addEventListener("click", () => {
+        const selected = alarmSelect.value;
+        if (!selected) {
+            appendLog("알람을 선택하세요.", null);
+            return;
+        }
+        const alarm = alarmCache.get(Number(selected));
+        if (!alarm) {
+            appendLog("알람 정보를 찾을 수 없습니다.", null);
+            return;
+        }
+        alarmId = alarm.id;
+        document.getElementById("alarm-name").value = alarm.name ?? "";
+        document.getElementById("alarm-target").value = alarm.targetAddress ?? "";
+        document.getElementById("alarm-condition-json").value = JSON.stringify(alarm.conditions ?? [], null, 2);
+        document.getElementById("update-alarm").disabled = false;
+        document.getElementById("delete-alarm").disabled = false;
+        document.getElementById("simulate-alarm").disabled = false;
+        document.getElementById("fetch-logs").disabled = false;
+        appendLog("알람 선택 완료", alarm);
     });
 </script>
 </body>
