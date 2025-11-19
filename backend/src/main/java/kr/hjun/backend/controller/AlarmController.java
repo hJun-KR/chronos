@@ -77,6 +77,16 @@ public class AlarmController {
         return ResponseEntity.ok(response);
     }
 
+    // 알람을 즉시 실행한다.
+    @PostMapping("/{alarmId}/run-now")
+    public ResponseEntity<Void> runNow(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                       @PathVariable Long alarmId) {
+        Alarm alarm = alarmRepository.findByIdAndUserId(alarmId, userDetails.getId())
+                .orElseThrow(() -> new kr.hjun.backend.exception.ChronosException(org.springframework.http.HttpStatus.NOT_FOUND, "알람을 찾을 수 없습니다."));
+        alarmExecutionService.execute(alarm);
+        return ResponseEntity.accepted().build();
+    }
+
     // 알람 실행 로그를 조회한다.
     @GetMapping("/{alarmId}/logs")
     public ResponseEntity<List<AlarmExecutionLogResponse>> getLogs(@AuthenticationPrincipal CustomUserDetails userDetails,
