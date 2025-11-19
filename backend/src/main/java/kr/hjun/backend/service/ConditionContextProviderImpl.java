@@ -17,6 +17,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ConditionContextProviderImpl implements ConditionContextProvider {
 
+    private static final String SEOUL_NX = "60";
+    private static final String SEOUL_NY = "127";
+
     private final WeatherApiClient weatherApiClient;
     private final StockApiClient stockApiClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -36,6 +39,8 @@ public class ConditionContextProviderImpl implements ConditionContextProvider {
             switch (condition.getConditionType()) {
                 case WEATHER -> {
                     weatherParams.putAll(extras);
+                    weatherParams.put("nx", SEOUL_NX);
+                    weatherParams.put("ny", SEOUL_NY);
                     if (extras.containsKey("value")) {
                         weatherData.put(condition.getFieldKey(), extras.get("value"));
                     }

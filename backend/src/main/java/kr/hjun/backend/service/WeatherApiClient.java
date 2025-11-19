@@ -43,7 +43,7 @@ public class WeatherApiClient {
         LocalDateTime now = LocalDateTime.now();
         query.put("base_date", params.getOrDefault("base_date", DATE_FMT.format(now)));
         query.put("base_time", params.getOrDefault("base_time", TIME_FMT.format(now.minusHours(1))));
-        query.put("nx", params.getOrDefault("nx", "55"));
+        query.put("nx", params.getOrDefault("nx", "60"));
         query.put("ny", params.getOrDefault("ny", "127"));
         query.put("pageNo", params.getOrDefault("pageNo", "1"));
         query.put("numOfRows", params.getOrDefault("numOfRows", "100"));
