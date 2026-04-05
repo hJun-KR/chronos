@@ -1,11 +1,23 @@
 package kr.hjun.backend.dto;
 
-import java.util.List;
+import kr.hjun.backend.entity.ConditionPreset;
+import lombok.Builder;
+import lombok.Getter;
 
-public record ConditionPresetResponse(
-        String key,
-        String name,
-        String description,
-        List<AlarmConditionRequest> conditions
-) {
+@Getter
+@Builder
+public class ConditionPresetResponse {
+    private Long id;
+    private String name;
+    private String description;
+    private String conditionsJson;
+
+    public static ConditionPresetResponse from(ConditionPreset preset) {
+        return ConditionPresetResponse.builder()
+                .id(preset.getId())
+                .name(preset.getName())
+                .description(preset.getDescription())
+                .conditionsJson(preset.getConditionsJson())
+                .build();
+    }
 }

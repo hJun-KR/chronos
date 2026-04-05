@@ -46,7 +46,16 @@ public class ConditionContextProviderImpl implements ConditionContextProvider {
                     }
                 }
                 case STOCK -> {
-                    stockParams.putAll(extras);
+                    String symbol = (String) extras.get("symbol");
+                    String market = (String) extras.get("market");
+                    if (symbol != null) {
+                        Map<String, Object> query = new HashMap<>(extras);
+                        Map<String, Object> quote = stockApiClient.fetch(query);
+                        // 조회된 가격 정보를 필드 키와 연계하여 데이터 컨텍스트에 저장
+                        if (quote != null && !quote.isEmpty()) {
+                            stockData.putAll(quote);
+                        }
+                    }
                     if (extras.containsKey("value")) {
                         stockData.put(condition.getFieldKey(), extras.get("value"));
                     }
@@ -62,10 +71,6 @@ public class ConditionContextProviderImpl implements ConditionContextProvider {
         if (!weatherParams.isEmpty()) {
             Map<String, Object> remote = weatherApiClient.fetch(weatherParams);
             weatherData.putAll(remote);
-        }
-        if (!stockParams.isEmpty()) {
-            Map<String, Object> remote = stockApiClient.fetch(stockParams);
-            stockData.putAll(remote);
         }
 
         String timezone = alarm.getTimezone() != null ? alarm.getTimezone() : "Asia/Seoul";

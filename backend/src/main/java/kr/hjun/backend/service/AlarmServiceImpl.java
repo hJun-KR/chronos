@@ -164,14 +164,17 @@ public class AlarmServiceImpl implements AlarmService {
 
     private String resolveCronExpression(Alarm alarm, String cronExpression, LocalDateTime runAt) {
         if (alarm.getScheduleType() == Alarm.ScheduleType.ONCE) {
-            if (runAt == null) {
-                throw new ChronosException(HttpStatus.BAD_REQUEST, "단발성 알람은 실행 시각(runAt)이 필요합니다.");
-            }
             return null;
         }
 
         if (cronExpression != null && !cronExpression.isBlank()) {
-            return cronExpression.trim();
+            String trimmed = cronExpression.trim();
+            try {
+                org.springframework.scheduling.support.CronExpression.parse(trimmed);
+                return trimmed;
+            } catch (IllegalArgumentException e) {
+                throw new ChronosException(HttpStatus.BAD_REQUEST, "유효하지 않은 CRON 표현식입니다: " + trimmed);
+            }
         }
 
         if (runAt == null) {

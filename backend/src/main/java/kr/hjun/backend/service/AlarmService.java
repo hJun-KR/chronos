@@ -1,6 +1,6 @@
 package kr.hjun.backend.service;
 
-import kr.hjun.backend.dto.AlarmCreateRequest;
+import  kr.hjun.backend.dto.AlarmCreateRequest;
 import kr.hjun.backend.dto.AlarmResponse;
 import kr.hjun.backend.dto.AlarmUpdateRequest;
 
@@ -23,3 +23,4 @@ public interface AlarmService {
     // 알람을 삭제한다.
     void deleteAlarm(Long userId, Long alarmId);
 }
+
