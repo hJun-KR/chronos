@@ -1,0 +1,32 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:chronos;MODE=MYSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+    show-sql: false
+
+  mail:
+    host: ${MAILER_HOST:localhost}
+    port: ${MAILER_PORT:1025}
+    username: ${MAILER_USER:test}
+    password: ${MAILER_PASS:test}
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+jwt:
+  secret: test-secret-key-test-secret-key-test
+  issuer: test
+  access-token-validity: 60000
+  refresh-token-validity: 120000
